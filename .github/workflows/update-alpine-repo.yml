@@ -9,7 +9,7 @@ jobs:
     if: github.repository == 'ish-app/ish'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Setup dependencies
         run: |
           curl https://rclone.org/install.sh | sudo bash

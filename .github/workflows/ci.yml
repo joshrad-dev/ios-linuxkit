@@ -13,10 +13,10 @@ jobs:
         cc: [clang, gcc]
         kernel: [ish, linux]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
         with:
             submodules: true
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v6
         with:
             python-version: '3.x'
       - name: Install dependencies
@@ -43,7 +43,7 @@ jobs:
       matrix:
         kernel: [ish, linux]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
         with:
             submodules: true
       - name: Install dependencies
