@@ -50,7 +50,8 @@ The first tranche centralizes FD-path lookup, stat timestamp fields, host random
 - Prefer the high 48-bit address space for large anonymous `MAP_NORESERVE` arenas so Bun/JSC/V8 do not exhaust the low 4GB mmap window.
 - Fixed pair-exclusive `STXP/STLXP` state handling so the standalone 64-bit and 32-bit LDXP/STLXP atomic repros now pass.
 - Added `CASP`/128-bit compare-exchange decode/helper plumbing; the standalone CAS128 repro now passes.
-- Added small atomic repro sources under `tests/arm64/atomics/` for LDXP/STLXP and CAS128.
+- Fixed ARM64 `CLREX` semantics: it now clears both single and pair exclusive monitor state instead of acting as a NOP, so post-`CLREX` `STXR`/`STXP` correctly fail.
+- Added small atomic repro sources under `tests/arm64/atomics/` for LDXP/STLXP, CAS128, and CLREX+STXR/STXP semantics.
 - Stopped advertising optional ARM64 crypto/LSE features in `AT_HWCAP` until those helper sets are fully coverage-clean; runtimes can fall back to baseline FP/ASIMD paths.
 
 ## Current coverage status

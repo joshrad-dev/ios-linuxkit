@@ -762,6 +762,7 @@ extern void gadget_atomic_casp(void);
 
 // Memory barrier (DMB ISH) for acquire/release semantics
 extern void gadget_dmb(void);
+extern void gadget_clrex(void);
 
 // Load/store pair gadgets
 extern void gadget_ldp64(void);
@@ -1767,7 +1768,10 @@ static int gen_branch(struct gen_state *state, uint32_t insn) {
         // CLREX — Clear Exclusive Monitor
         // Encoding: 1101 0101 0000 0011 0011 CRm 0101 1111 = 0xd503305f | (CRm << 8)
         if ((insn & 0xfffff0ff) == 0xd503305f) {
-            // NOP — exclusive monitor is cleared by STXR/STLXR in our implementation
+            // Must clear both single and pair exclusive monitor state.
+            // Treating CLREX as NOP lets a subsequent STXR/STXP succeed
+            // when architecture requires failure.
+            gen(state, (unsigned long) gadget_clrex);
             return 1;
         }
 

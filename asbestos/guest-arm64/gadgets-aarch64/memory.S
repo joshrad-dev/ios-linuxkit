@@ -1279,6 +1279,19 @@ atomic_casp_segfault:
     gret
 
 /*
+ * CLREX — clear single/pair exclusive monitor state.
+ */
+.gadget clrex
+    movn x8, #0
+    str x8, [_cpu, #CPU_excl_addr]
+    str x8, [_cpu, #CPU_excl_pair_addr]
+    str wzr, [_cpu, #CPU_excl_pair_size]
+    str xzr, [_cpu, #CPU_excl_val]
+    str xzr, [_cpu, #CPU_excl_pair_val_lo]
+    str xzr, [_cpu, #CPU_excl_pair_val_hi]
+    gret
+
+/*
  * Base register update gadget for post/pre-indexed addressing
  * Code stream: [gadget addr][rn | offset<<8]
  * Updates: Rn = Rn + offset

@@ -328,6 +328,8 @@ Current Linux-host status from this pass:
 - Fixed the pair-exclusive `STXP/STLXP` gadget clobbering `_pc` (`x28`) while
   loading the expected high word. The standalone `tests/arm64/atomics/ldxp-stlxp.c` now covers both 64-bit and 32-bit pair exclusives and passes.
 - Fixed `CAS`/`CASP` decode separation so pair exclusives are no longer misdecoded as single-register CAS. The standalone `tests/arm64/atomics/cas128.c` now passes.
+- Fixed ARM64 `CLREX` handling: it now clears both single and pair exclusive monitor state instead of being treated as a NOP, so `STXR`/`STXP` after `CLREX` fail as required.
+- Added standalone `tests/arm64/atomics/clrex-stxr.c` coverage for `CLREX` + `STXR`/`STXP` failure semantics (32/64-bit single + pair).
 - Stopped advertising optional crypto/LSE features in `AT_HWCAP` until those helper sets are fully coverage-clean; runtimes can fall back to baseline FP/ASIMD paths.
 - Added `LDNP`/`STNP` handling by treating non-temporal pair loads/stores like ordinary no-writeback pair transfers. This removes the `0xa8007c3f` illegal-instruction trap seen in Bun TypeScript runs.
 - Added ARM64 `preadv`/`pwritev` implementations and wired syscalls 69/70 to
