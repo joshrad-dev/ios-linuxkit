@@ -28,8 +28,9 @@ struct asbestos {
     } *page_hash;
 
     // Incremented on every block invalidation; used to invalidate persistent
-    // per-thread block caches (which may hold pointers to jetsam'd blocks)
-    unsigned invalidate_gen;
+    // per-thread block caches (which may hold pointers to jetsam'd blocks).
+    // Atomic because readers check it without asbestos->lock in the hot JIT path.
+    _Atomic unsigned invalidate_gen;
 
     // Number of threads currently inside cpu_run_to_interrupt.
     // When 1, we can skip jetsam_lock (no other thread to synchronize with).
@@ -80,6 +81,12 @@ struct fiber_block {
 
 // High-bit tracing: detect emulation bugs that leave bits 32+ dirty in guest regs
 extern volatile bool g_trace_highbits;
+
+// Optional per-guest-PC trace hooks (used for targeted replay debugging).
+extern volatile bool g_trace_guest_pc;
+void asbestos_set_trace_pcs(const char *spec);
+void asbestos_set_trace_gate(const char *pc_spec, const char *x4_spec, const char *budget_spec);
+bool asbestos_should_trace_guest_pc(addr_t pc);
 
 // Create a new asbestos
 struct asbestos *asbestos_new(struct mmu *mmu);

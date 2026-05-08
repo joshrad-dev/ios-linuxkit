@@ -330,6 +330,12 @@ Current Linux-host status from this pass:
 - Fixed `CAS`/`CASP` decode separation so pair exclusives are no longer misdecoded as single-register CAS. The standalone `tests/arm64/atomics/cas128.c` now passes.
 - Fixed ARM64 `CLREX` handling: it now clears both single and pair exclusive monitor state instead of being treated as a NOP, so `STXR`/`STXP` after `CLREX` fail as required.
 - Added standalone `tests/arm64/atomics/clrex-stxr.c` coverage for `CLREX` + `STXR`/`STXP` failure semantics (32/64-bit single + pair).
+- Fixed `LDXR` size dispatch to use size-matched TLB prep/cross-page paths (8/16/32/64) instead of always routing through 32-bit prep.
+- Added standalone `tests/arm64/atomics/ldxr-widths.c` coverage for `LDXRB`/`LDXRH`/`LDXR W`/`LDXR X` near page-end addresses.
+- Added trace-gating controls (`ISH_TRACE_GATE_PC`, `ISH_TRACE_GATE_X4`, `ISH_TRACE_GATE_BUDGET`) plus block-entry tracepoints for replay triage; this made it possible to isolate the deterministic crash path through `libjvm+0x34710c`/`+0x3471e4` where iSH returns slot-index-1 (`[x5+936]=1`) object `0xc99b6fd8` before the later `libjvm+0x80334c` null dereference.
+- Fixed ARM64 `LDPSW` pair-load decoding/execution. GPR pair opcode `opc=01,L=1` is now handled as sign-extending `LDPSW` rather than zero-extending `LDP W`, and unallocated GPR pair encodings are rejected. This clears the deterministic HotSpot C2 replay crash for `ConcurrentHashMap::tabAt` and lets default mixed-mode `javac Hello.java` complete.
+- Added standalone `tests/arm64/loadstore/ldpsw-pair.c` coverage for signed-offset and post-indexed `LDPSW`, including a cross-page pair load.
+- Gated ARM64 guest SIGSEGV stack/map dumps behind `ISH_TRACE_FAULTS` so runtimes that deliberately handle null/check traps (HotSpot included) no longer emit production noise by default.
 - Stopped advertising optional crypto/LSE features in `AT_HWCAP` until those helper sets are fully coverage-clean; runtimes can fall back to baseline FP/ASIMD paths.
 - Added `LDNP`/`STNP` handling by treating non-temporal pair loads/stores like ordinary no-writeback pair transfers. This removes the `0xa8007c3f` illegal-instruction trap seen in Bun TypeScript runs.
 - Added ARM64 `preadv`/`pwritev` implementations and wired syscalls 69/70 to

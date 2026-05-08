@@ -1,6 +1,6 @@
 # ARM64 smoke issues and syscall coverage appraisal
 
-Updated: 2026-05-04
+Updated: 2026-05-08
 
 ## Executive status
 
@@ -8,7 +8,7 @@ The current ARM64 Linux-host fakefs is in a good core-runtime state:
 
 - Staged runtime coverage: **26 / 26 passing**.
 - Benchmarks Game core tier: **9 official language rows × 10 benchmarks = 90 / 90 runs passing**.
-- Java-equivalent probe: **10 / 10 passing** in HotSpot interpreter mode (`-Xint -Xshare:off`).
+- Java-equivalent probe: **10 / 10 passing** in HotSpot default mixed mode; interpreter fallback mode also passes.
 - Native compiler rows additionally build inside the guest: **GCC 10 / 10 builds**, **G++ 10 / 10 builds**.
 - The rows now include interpreted runtimes, managed runtimes, native compilers, big integers, regex engines, pipes/stdin/stdout, `fork()`, guest pthreads, futex-heavy language runtimes, and SysV shared-memory/message-queue IPC.
 
@@ -28,7 +28,7 @@ The current ARM64 Linux-host fakefs is in a good core-runtime state:
 | GCC/G++ Benchmarks Game | Some threaded `revcomp`/`fasta` variants segfault under Alpine/musl. | The source allocates large per-thread VLAs; musl's default pthread stack is much smaller than the Debian/glibc environment used by the benchmark site. | **Accounted for as source/environment limitation**: rows select the next official portable/non-overflowing variant rather than changing benchmark source. |
 | G++ Benchmarks Game | `fannkuchredux-gpp-5` does not compile with Alpine's current GCC without a missing include fix. | Source uses `int64_t` without including `<cstdint>`. | **Accounted for as source portability issue**: row selects the next official variant instead of patching source. |
 | Node.js Benchmarks Game | First Node row skipped `worker_threads` variants. | At the time this was kept as a scheduler/futex stress lane; after the poll-valve fix, worker creation itself works, but some official worker variants produce no output at smoke-sized inputs. | **No active iSH correctness blocker**; keep as a separate stress/validation lane if we want larger inputs or per-variant expected-output checks. |
-| Java/OpenJDK probe | Startup and interpreter-mode equivalents pass; mixed-mode compiler/JIT remains open. | Fixed two ARM64 ABI/runtime blockers: `DCZID_EL0`/`dc zva` for HotSpot startup, and Linux/musl-compatible signal `ucontext_t` plus null SIGSEGV delivery for HotSpot implicit null checks. | **Partially closed**: `java -version`, trivial `java Hello`, and Java-equivalent Benchmarks Game `10 / 10` pass with `-Xint`; heavier default mixed-mode `javac` still fails later in generated/compiled HotSpot code. |
+| Java/OpenJDK probe | Startup, default mixed-mode `javac Hello.java`, `java Hello`, and Java-equivalent Benchmarks Game equivalents pass. | Fixed ARM64 ABI/runtime blockers (`DCZID_EL0`/`dc zva`, Linux/musl-compatible signal `ucontext_t`, null SIGSEGV delivery) and the later C2 compiler divergence caused by missing `LDPSW` pair-load sign extension. | **Closed for smoke scope**: default mixed-mode Java smoke passes; keep broader HotSpot/JIT workloads in the regression matrix. |
 | External dependency alternatives | Perl GMP backend, Node `mpzjs`, Lua `bn`, and similar variants are not always packaged by Alpine. | Missing language-specific third-party packages, not emulator faults. | **Accounted for**: where a packaged/buildable dependency exists we use it (`php84-gmp`, `lua5.3` LGMP via luarocks, PCRE packages); otherwise variants remain external lanes. |
 
 ## Current syscall coverage snapshot
@@ -84,7 +84,7 @@ These are not blocking the current smoke set, but they frame the next coverage w
 
 ## Appraisal
 
-For userland development workloads, ARM64 iSH is now past the fragile bring-up phase. The strongest evidence is that the same fakefs can run package installs, C/C++ compilation, Go/Bun/Node/Python/PHP/Perl/Ruby/Lua runtime rows, Java in HotSpot interpreter mode, GMP/PCRE/APR/Boost/TBB-linked native code, `fork()` plus SysV IPC, and the go-gte numerical workload.
+For userland development workloads, ARM64 iSH is now past the fragile bring-up phase. The strongest evidence is that the same fakefs can run package installs, C/C++ compilation, Go/Bun/Node/Python/PHP/Perl/Ruby/Lua runtime rows, Java in HotSpot default mixed mode plus interpreter fallback mode, GMP/PCRE/APR/Boost/TBB-linked native code, `fork()` plus SysV IPC, and the go-gte numerical workload.
 
 The remaining risk is now concentrated less in common development syscalls and more in larger optional subsystems: `io_uring`, AIO, namespace/security/profiling APIs, and the remaining mixed-mode OpenJDK/HotSpot JIT/compiler lane. The highest-value incremental syscall gaps identified earlier have been closed and are now part of staged runtime coverage.
 
@@ -106,7 +106,7 @@ The staged runtime suite now has a dedicated C fixture named `high-value syscall
 
 OpenJDK 21 startup now passes after ARM64 iSH reports `DCZID_EL0 == 4` (64-byte DC ZVA block) and implements `dc zva` as a 64-byte naturally aligned zeroing operation. The staged runtime suite includes `arm64 DC ZVA sysreg/instruction`, and `/workspace/tmp/benchmarksgame-java-equivalent-smoke-20260505-102308.md` shows the Java-equivalent Benchmarks Game probe passing **10 / 10** under `-Xint -Xshare:off`.
 
-Remaining Java work: default mixed-mode `java -version` and a trivial `java Hello` pass, but heavier default mixed-mode `javac` can still fail, so keep that as a separate HotSpot JIT/compiler correctness lane.
+2026-05-08 update: default mixed-mode `java -version`, `javac Hello.java`, `java Hello`, and the Java-equivalent Benchmarks Game smoke now pass after fixing ARM64 `LDPSW` pair-load sign extension. Keep larger HotSpot/JIT workloads in the regression matrix, but the previous default `javac` smoke blocker is closed.
 
 ## 2026-05-04 ARM64 signal ucontext / null-SIGSEGV correction
 

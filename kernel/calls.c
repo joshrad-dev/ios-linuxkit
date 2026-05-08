@@ -587,8 +587,15 @@ void handle_interrupt(int interrupt) {
                 .code = mem_segv_reason(current->mem, cpu->segfault_addr),
                 .fault.addr = cpu->segfault_addr,
             };
+#if defined(GUEST_X86) || !defined(GUEST_ARM64)
             dump_stack(8);
             dump_maps();
+#elif defined(GUEST_ARM64)
+            if (g_trace_faults) {
+                dump_stack(8);
+                dump_maps();
+            }
+#endif
             deliver_signal(current, SIGSEGV_, info);
         }
 #ifdef GUEST_ARM64

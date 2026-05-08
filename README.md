@@ -67,7 +67,7 @@ Latest staged runtime report: **26 / 26 passing** (`/workspace/tmp/ish-arm64-run
 | ARM64 signal ucontext | Passing | Guest SIGSEGV handlers now see Linux/musl-compatible `ucontext_t` (`uc_mcontext` offset 176), and null read faults are delivered instead of synthesized as zero loads. |
 | ARM64 CCMP/CCMN NV | Passing | Conditional compare now treats condition code 15 (`NV`) like AArch64 hardware does for these instructions: condition true, not false-immediate fallback. |
 | ARM64 self-modifying code | Passing | Guest writes to previously translated code pages invalidate stale translated blocks at block boundaries; required for JIT/code-patching workloads. |
-| Java/OpenJDK | Partial/passing interpreter lane | OpenJDK 21 starts; Java-equivalent Benchmarks Game passes 10/10 with `-Xint -Xshare:off`. Heavier default mixed-mode `javac` remains a JIT/compiler lane. |
+| Java/OpenJDK | Passing default mixed-mode smoke | OpenJDK 21 starts; default mixed-mode `javac Hello.java` and `java Hello` pass; Java-equivalent Benchmarks Game passes 10/10 in default mixed mode, with `JAVA_SMOKE_MODE=interpreter` still available as conservative fallback coverage. |
 | Go | Passing | `go version`, `go env`, `go tool compile`, `go run`, `go build`, and `go test` pass. |
 | Node/npm | Passing | `node -e`, `npm --version`, and `npm run` pass after mmap/reservation and `pwritev` fixes. |
 | Bun | Passing | `bun --version`, local `file:` dependency install, TypeScript run, `bun test`, and `bun build` all pass in the staged harness. |
@@ -96,7 +96,7 @@ Current highlights:
 - staged runtime coverage is **26 / 26 passing**;
 - Bun + PiClaw now install/start far enough to serve the web UI and no longer hit the recursive `copyfile`/`ENOTSUP` bootstrap issue;
 - `rcarmo/go-gte` can now build, convert `gte-small.gtemodel` inside the guest, and complete `make run-go`; this exposed and fixed missing AdvSIMD `FCVTL`/`FCVTL2` support;
-- the Benchmarks Game core tier now has GCC, G++, Go, Python, Node.js, PHP, Perl, Ruby, and Lua rows passing, and the local Java-equivalent probe now passes 10/10 in HotSpot interpreter mode; all official language labels remain accounted for and tiered by Alpine aarch64 feasibility.
+- the Benchmarks Game core tier now has GCC, G++, Go, Python, Node.js, PHP, Perl, Ruby, and Lua rows passing, and the local Java-equivalent probe now passes 10/10 in HotSpot default mixed mode; all official language labels remain accounted for and tiered by Alpine aarch64 feasibility.
 
 Detailed go-gte repro notes remain in [docs/GO_GTE_PROGRESS.md](docs/GO_GTE_PROGRESS.md).
 

@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
+#include <string.h>
+#include <stdlib.h>
 #include "asbestos/asbestos.h"
 #include "asbestos/gen.h"
 #include "asbestos/frame.h"
@@ -48,7 +50,346 @@ extern int current_pid(void);
 volatile bool g_trace_highbits = false;
 volatile addr_t g_watch_page_val = 0;
 
-void jit_trace_regs(struct cpu_state *cpu) { (void)cpu; }
+#define TRACE_PC_MAX 16
+volatile bool g_trace_guest_pc = false;
+static addr_t g_trace_pc_vals[TRACE_PC_MAX];
+static addr_t g_trace_pc_masks[TRACE_PC_MAX];
+static int g_trace_pc_count = 0;
+
+static bool g_trace_gate_enabled = false;
+static addr_t g_trace_gate_pc = 0;
+static addr_t g_trace_gate_mask = ~(addr_t) 0;
+static bool g_trace_gate_x4_enabled = false;
+static uint64_t g_trace_gate_x4 = 0;
+static int g_trace_gate_budget = 0; // 0 = unlimited after first gate hit
+
+static __thread bool t_trace_gate_open = false;
+static __thread int t_trace_gate_left = 0;
+
+bool asbestos_should_trace_guest_pc(addr_t pc) {
+    if (!g_trace_guest_pc)
+        return false;
+    for (int i = 0; i < g_trace_pc_count; i++) {
+        if ((pc & g_trace_pc_masks[i]) == (g_trace_pc_vals[i] & g_trace_pc_masks[i]))
+            return true;
+    }
+    return false;
+}
+
+void asbestos_set_trace_pcs(const char *spec) {
+    g_trace_guest_pc = false;
+    g_trace_pc_count = 0;
+    if (spec == NULL || spec[0] == '\0')
+        return;
+
+    char *copy = strdup(spec);
+    if (copy == NULL)
+        return;
+
+    for (char *tok = strtok(copy, ", "); tok != NULL; tok = strtok(NULL, ", ")) {
+        if (*tok == '\0' || g_trace_pc_count >= TRACE_PC_MAX)
+            continue;
+
+        char *slash = strchr(tok, '/');
+        addr_t value = 0;
+        addr_t mask = ~(addr_t) 0;
+
+        if (slash != NULL) {
+            *slash = '\0';
+            value = (addr_t) strtoull(tok, NULL, 0);
+            mask = (addr_t) strtoull(slash + 1, NULL, 0);
+        } else {
+            value = (addr_t) strtoull(tok, NULL, 0);
+            // Convenience: small values are treated as guest-offset matchers
+            // (e.g., 0x170aec matches pc&0xffffff).
+            if (value <= 0xffffff)
+                mask = 0xffffff;
+        }
+
+        g_trace_pc_vals[g_trace_pc_count] = value;
+        g_trace_pc_masks[g_trace_pc_count] = mask;
+        g_trace_pc_count++;
+    }
+
+    free(copy);
+    g_trace_guest_pc = g_trace_pc_count > 0;
+    if (g_trace_guest_pc) {
+        fprintf(stderr, "TRACEPC enabled (%d matchers) via ISH_TRACE_PCS\n", g_trace_pc_count);
+    }
+}
+
+void asbestos_set_trace_gate(const char *pc_spec, const char *x4_spec, const char *budget_spec) {
+    g_trace_gate_enabled = false;
+    g_trace_gate_pc = 0;
+    g_trace_gate_mask = ~(addr_t) 0;
+    g_trace_gate_x4_enabled = false;
+    g_trace_gate_x4 = 0;
+    g_trace_gate_budget = 0;
+    t_trace_gate_open = false;
+    t_trace_gate_left = 0;
+
+    if (pc_spec == NULL || pc_spec[0] == '\0')
+        return;
+
+    char *copy = strdup(pc_spec);
+    if (copy == NULL)
+        return;
+
+    char *slash = strchr(copy, '/');
+    if (slash != NULL) {
+        *slash = '\0';
+        g_trace_gate_pc = (addr_t) strtoull(copy, NULL, 0);
+        g_trace_gate_mask = (addr_t) strtoull(slash + 1, NULL, 0);
+    } else {
+        g_trace_gate_pc = (addr_t) strtoull(copy, NULL, 0);
+        if (g_trace_gate_pc <= 0xffffff)
+            g_trace_gate_mask = 0xffffff;
+    }
+    free(copy);
+
+    if (x4_spec != NULL && x4_spec[0] != '\0') {
+        g_trace_gate_x4 = strtoull(x4_spec, NULL, 0);
+        g_trace_gate_x4_enabled = true;
+    }
+
+    if (budget_spec != NULL && budget_spec[0] != '\0') {
+        long budget = strtol(budget_spec, NULL, 0);
+        if (budget > 0)
+            g_trace_gate_budget = (int) budget;
+    }
+
+    g_trace_gate_enabled = true;
+    fprintf(stderr, "TRACEGATE enabled pc=%#llx/%#llx",
+            (unsigned long long) g_trace_gate_pc,
+            (unsigned long long) g_trace_gate_mask);
+    if (g_trace_gate_x4_enabled)
+        fprintf(stderr, " x4=%#llx", (unsigned long long) g_trace_gate_x4);
+    if (g_trace_gate_budget > 0)
+        fprintf(stderr, " budget=%d", g_trace_gate_budget);
+    fputc('\n', stderr);
+}
+
+static bool trace_gate_allow(struct cpu_state *cpu) {
+    if (!g_trace_gate_enabled)
+        return true;
+
+    if (t_trace_gate_open && g_trace_gate_budget > 0 && t_trace_gate_left == 0)
+        t_trace_gate_open = false;
+
+    if (!t_trace_gate_open) {
+        if ((cpu->pc & g_trace_gate_mask) != (g_trace_gate_pc & g_trace_gate_mask))
+            return false;
+        if (g_trace_gate_x4_enabled && cpu->x4 != g_trace_gate_x4)
+            return false;
+
+        t_trace_gate_open = true;
+        t_trace_gate_left = g_trace_gate_budget;
+        fprintf(stderr, "TRACEGATE open pc=%#llx x4=%#llx\n",
+                (unsigned long long) cpu->pc,
+                (unsigned long long) cpu->x4);
+    }
+
+    if (g_trace_gate_budget > 0 && t_trace_gate_left > 0)
+        t_trace_gate_left--;
+
+    return true;
+}
+
+static bool trace_read_u64(struct cpu_state *cpu, addr_t addr, uint64_t *out) {
+    struct mem *mem = container_of(cpu->mmu, struct mem, mmu);
+    void *ptr = mem_ptr(mem, addr, MEM_READ);
+    if (ptr == NULL)
+        return false;
+    memcpy(out, ptr, sizeof(*out));
+    return true;
+}
+
+static bool trace_read_u32(struct cpu_state *cpu, addr_t addr, uint32_t *out) {
+    struct mem *mem = container_of(cpu->mmu, struct mem, mmu);
+    void *ptr = mem_ptr(mem, addr, MEM_READ);
+    if (ptr == NULL)
+        return false;
+    memcpy(out, ptr, sizeof(*out));
+    return true;
+}
+
+static void trace_dump_obj(struct cpu_state *cpu, const char *name, addr_t addr) {
+    uint64_t q0 = 0, q1 = 0, q2 = 0, q3 = 0;
+    bool ok0 = trace_read_u64(cpu, addr + 0, &q0);
+    bool ok1 = trace_read_u64(cpu, addr + 8, &q1);
+    bool ok2 = trace_read_u64(cpu, addr + 16, &q2);
+    bool ok3 = trace_read_u64(cpu, addr + 24, &q3);
+    fprintf(stderr, "TRACEOBJ %s=%#llx +0=%s%#llx +8=%s%#llx +16=%s%#llx +24=%s%#llx\n",
+            name,
+            (unsigned long long) addr,
+            ok0 ? "" : "!", (unsigned long long) q0,
+            ok1 ? "" : "!", (unsigned long long) q1,
+            ok2 ? "" : "!", (unsigned long long) q2,
+            ok3 ? "" : "!", (unsigned long long) q3);
+}
+
+void jit_trace_regs(struct cpu_state *cpu) {
+    if (!trace_gate_allow(cpu))
+        return;
+
+    fprintf(stderr,
+            "TRACEPC pc=%#llx x0=%#llx x1=%#llx x2=%#llx x3=%#llx x4=%#llx x5=%#llx x19=%#llx x20=%#llx x21=%#llx x22=%#llx x23=%#llx x24=%#llx x25=%#llx x26=%#llx x27=%#llx x30=%#llx\n",
+            (unsigned long long) cpu->pc,
+            (unsigned long long) cpu->x0,
+            (unsigned long long) cpu->x1,
+            (unsigned long long) cpu->x2,
+            (unsigned long long) cpu->x3,
+            (unsigned long long) cpu->x4,
+            (unsigned long long) cpu->x5,
+            (unsigned long long) cpu->x19,
+            (unsigned long long) cpu->x20,
+            (unsigned long long) cpu->x21,
+            (unsigned long long) cpu->x22,
+            (unsigned long long) cpu->x23,
+            (unsigned long long) cpu->x24,
+            (unsigned long long) cpu->x25,
+            (unsigned long long) cpu->x26,
+            (unsigned long long) cpu->x27,
+            (unsigned long long) cpu->x30);
+
+    // HotSpot replay triage around libjvm+0x170aec path: dump key objects.
+    addr_t off = cpu->pc & 0xffffff;
+    if (off == 0x170aec || off == 0x170b50 || off == 0x170b58 ||
+            off == 0x170b64 || off == 0x170b70 || off == 0x170b74 ||
+            off == 0xe5aaec || off == 0xe5ab50 || off == 0xe5ab58 ||
+            off == 0xe5ab64 || off == 0xe5ab70 || off == 0xe5ab74) {
+        trace_dump_obj(cpu, "x19", cpu->x19);
+        trace_dump_obj(cpu, "x20", cpu->x20);
+        trace_dump_obj(cpu, "x1", cpu->x1);
+        trace_dump_obj(cpu, "x0", cpu->x0);
+    }
+
+    // Replay triage around the libjvm+0x80334c crash sequence (absolute low24
+    // around 0x4ed2xx/0x4ed3xx for this mmap layout): inspect the x26 object
+    // and the just-loaded x0 pointer chain.
+    if (off == 0x24f580 || off == 0x250400 || off == 0x250464 ||
+            off == 0x2504b0 || off == 0x2504fc || off == 0x250550 ||
+            off == 0x250564 || off == 0x25057c || off == 0x4ebad4 ||
+            off == 0x4ed15c || off == 0x4ed220 || off == 0x4ed230 ||
+            off == 0x4ed250 || off == 0x4ed344 || off == 0x4ed348) {
+        trace_dump_obj(cpu, "x24", cpu->x24);
+        trace_dump_obj(cpu, "x26", cpu->x26);
+        trace_dump_obj(cpu, "x0", cpu->x0);
+        if (off == 0x250400 || off == 0x250464 || off == 0x2504b0 ||
+                off == 0x2504fc || off == 0x250550 || off == 0x250564 ||
+                off == 0x25057c) {
+            uint32_t idx1 = 0, idx19 = 0, idx20 = 0, idx22 = 0;
+            bool ok_idx1 = trace_read_u32(cpu, cpu->x1 + 40, &idx1);
+            bool ok_idx19 = trace_read_u32(cpu, cpu->x19 + 40, &idx19);
+            bool ok_idx20 = trace_read_u32(cpu, cpu->x20 + 40, &idx20);
+            bool ok_idx22 = trace_read_u32(cpu, cpu->x22 + 40, &idx22);
+            fprintf(stderr,
+                    "TRACE566400 pc=%#llx x0=%#llx x1=%#llx(+40=%s%u) x19=%#llx(+40=%s%u) x20=%#llx(+40=%s%u) x22=%#llx(+40=%s%u) x2=%#llx x3=%#llx x4=%#llx\n",
+                    (unsigned long long) cpu->pc,
+                    (unsigned long long) cpu->x0,
+                    (unsigned long long) cpu->x1, ok_idx1 ? "" : "!", ok_idx1 ? idx1 : 0,
+                    (unsigned long long) cpu->x19, ok_idx19 ? "" : "!", ok_idx19 ? idx19 : 0,
+                    (unsigned long long) cpu->x20, ok_idx20 ? "" : "!", ok_idx20 ? idx20 : 0,
+                    (unsigned long long) cpu->x22, ok_idx22 ? "" : "!", ok_idx22 ? idx22 : 0,
+                    (unsigned long long) cpu->x2,
+                    (unsigned long long) cpu->x3,
+                    (unsigned long long) cpu->x4);
+            trace_dump_obj(cpu, "f566400_x1", cpu->x1);
+            trace_dump_obj(cpu, "f566400_x19", cpu->x19);
+            trace_dump_obj(cpu, "f566400_x20", cpu->x20);
+            trace_dump_obj(cpu, "f566400_x22", cpu->x22);
+        }
+
+        if (off == 0x24f580) {
+            uint32_t idx1 = 0, idx3 = 0;
+            bool ok_idx1 = trace_read_u32(cpu, cpu->x1 + 40, &idx1);
+            bool ok_idx3 = trace_read_u32(cpu, cpu->x3 + 40, &idx3);
+            fprintf(stderr,
+                    "TRACE565580 x1=%#llx +40=%s%u x3=%#llx +40=%s%u x4=%#llx\n",
+                    (unsigned long long) cpu->x1,
+                    ok_idx1 ? "" : "!", ok_idx1 ? idx1 : 0,
+                    (unsigned long long) cpu->x3,
+                    ok_idx3 ? "" : "!", ok_idx3 ? idx3 : 0,
+                    (unsigned long long) cpu->x4);
+            trace_dump_obj(cpu, "f565580_x1", cpu->x1);
+            trace_dump_obj(cpu, "f565580_x3", cpu->x3);
+        }
+
+        if (off == 0x4ebad4) {
+            uint32_t in_idx40 = 0;
+            bool ok_in_idx40 = trace_read_u32(cpu, cpu->x1 + 40, &in_idx40);
+            fprintf(stderr, "TRACECALL x1=%#llx +40=%s%u\n",
+                    (unsigned long long) cpu->x1,
+                    ok_in_idx40 ? "" : "!",
+                    ok_in_idx40 ? in_idx40 : 0);
+            trace_dump_obj(cpu, "call_x1", cpu->x1);
+        }
+
+        if (off == 0x4ed15c) {
+            uint32_t idx40 = 0;
+            bool ok_idx40 = trace_read_u32(cpu, cpu->x0 + 40, &idx40);
+            fprintf(stderr, "TRACERET x0=%#llx +40=%s%u\n",
+                    (unsigned long long) cpu->x0,
+                    ok_idx40 ? "" : "!",
+                    ok_idx40 ? idx40 : 0);
+        }
+
+        if (off == 0x4ed220) {
+            uint64_t t0 = 0, t1 = 0, t2 = 0;
+            bool ok0 = trace_read_u64(cpu, cpu->x0 + 0, &t0);
+            bool ok1 = trace_read_u64(cpu, cpu->x0 + 8, &t1);
+            bool ok2 = trace_read_u64(cpu, cpu->x0 + 16, &t2);
+            fprintf(stderr,
+                    "TRACEARR x0=%#llx [0]=%s%#llx [1]=%s%#llx [2]=%s%#llx\n",
+                    (unsigned long long) cpu->x0,
+                    ok0 ? "" : "!", (unsigned long long) t0,
+                    ok1 ? "" : "!", (unsigned long long) t1,
+                    ok2 ? "" : "!", (unsigned long long) t2);
+            if (ok0 && t0 != 0)
+                trace_dump_obj(cpu, "arr0", (addr_t) t0);
+            if (ok1 && t1 != 0)
+                trace_dump_obj(cpu, "arr1", (addr_t) t1);
+            if (ok2 && t2 != 0)
+                trace_dump_obj(cpu, "arr2", (addr_t) t2);
+        }
+    }
+
+    // Hash-slot replay triage around libjvm+0x34710c..+0x3471ec.
+    if (off == 0x3110c || off == 0x311e4 || off == 0x311e8 || off == 0x311ec) {
+        uint64_t slot_key = 0, table_ptr = 0;
+        uint32_t slot_index = 0;
+        bool ok_key = trace_read_u64(cpu, cpu->x5 + 928, &slot_key);
+        bool ok_idx = trace_read_u32(cpu, cpu->x5 + 936, &slot_index);
+        bool ok_tab = trace_read_u64(cpu, cpu->x0 + 912, &table_ptr);
+        fprintf(stderr,
+                "TRACESLOT pc=%#llx x0=%#llx x1=%#llx x5=%#llx slot_key=%s%#llx slot_idx=%s%u table=%s%#llx\n",
+                (unsigned long long) cpu->pc,
+                (unsigned long long) cpu->x0,
+                (unsigned long long) cpu->x1,
+                (unsigned long long) cpu->x5,
+                ok_key ? "" : "!", (unsigned long long) slot_key,
+                ok_idx ? "" : "!", ok_idx ? slot_index : 0,
+                ok_tab ? "" : "!", (unsigned long long) table_ptr);
+        if (ok_tab && table_ptr != 0) {
+            uint64_t e0 = 0, e1 = 0, e2 = 0;
+            bool ok_e0 = trace_read_u64(cpu, table_ptr + 0, &e0);
+            bool ok_e1 = trace_read_u64(cpu, table_ptr + 8, &e1);
+            bool ok_e2 = trace_read_u64(cpu, table_ptr + 16, &e2);
+            fprintf(stderr,
+                    "TRACESLOT entries base=%#llx [0]=%s%#llx [1]=%s%#llx [2]=%s%#llx\n",
+                    (unsigned long long) table_ptr,
+                    ok_e0 ? "" : "!", (unsigned long long) e0,
+                    ok_e1 ? "" : "!", (unsigned long long) e1,
+                    ok_e2 ? "" : "!", (unsigned long long) e2);
+            if (ok_e0 && e0 != 0)
+                trace_dump_obj(cpu, "slot_e0", (addr_t) e0);
+            if (ok_e1 && e1 != 0)
+                trace_dump_obj(cpu, "slot_e1", (addr_t) e1);
+            if (ok_e2 && e2 != 0)
+                trace_dump_obj(cpu, "slot_e2", (addr_t) e2);
+        }
+    }
+}
 void c_watch_write_hit(addr_t addr, const char *caller) { (void)addr; (void)caller; }
 void jit_watch_write_hit(struct cpu_state *cpu, addr_t store_addr, unsigned long *code_ptr) {
     (void)cpu; (void)store_addr; (void)code_ptr;
@@ -80,6 +421,7 @@ struct asbestos *asbestos_new(struct mmu *mmu) {
     list_init(&asbestos->jetsam);
     lock_init(&asbestos->lock);
     wrlock_init(&asbestos->jetsam_lock);
+    atomic_init(&asbestos->invalidate_gen, 0);
     atomic_init(&asbestos->jit_active_threads, 0);
     atomic_init(&asbestos->jetsam_gen, 0);
     return asbestos;
@@ -123,7 +465,7 @@ void asbestos_invalidate_range(struct asbestos *absestos, page_t start, page_t e
         }
     }
     if (did_invalidate)
-        absestos->invalidate_gen++;
+        atomic_fetch_add_explicit(&absestos->invalidate_gen, 1, memory_order_release);
     unlock(&absestos->lock);
 }
 
@@ -160,7 +502,7 @@ void asbestos_invalidate_all(struct asbestos *asbestos) {
         }
     }
     if (did_invalidate)
-        asbestos->invalidate_gen++;
+        atomic_fetch_add_explicit(&asbestos->invalidate_gen, 1, memory_order_release);
     unlock(&asbestos->lock);
 }
 
@@ -270,6 +612,10 @@ static inline size_t fiber_cache_hash(addr_t ip) {
     return (ip ^ (ip >> 12)) & (FIBER_CACHE_SIZE - 1);
 }
 
+static inline unsigned asbestos_invalidate_gen_load(struct asbestos *asbestos) {
+    return atomic_load_explicit(&asbestos->invalidate_gen, memory_order_acquire);
+}
+
 static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
     struct asbestos *asbestos = cpu->mmu->asbestos;
 
@@ -277,12 +623,13 @@ static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
     // This prevents jetsam cleanup from freeing blocks while we're executing them.
     read_wrlock(&asbestos->jetsam_lock);
 
-    // Use persistent block cache and frame from TLB; invalidate when blocks are jetsam'd
-    bool caches_stale = (tlb->block_cache_gen != asbestos->invalidate_gen);
+    // Use persistent block cache and frame from TLB; invalidate when blocks are jetsam'd.
+    unsigned invalidate_gen = asbestos_invalidate_gen_load(asbestos);
+    bool caches_stale = (tlb->block_cache_gen != invalidate_gen);
     struct fiber_block **cache = tlb->block_cache;
     if (caches_stale) {
         memset(cache, 0, sizeof(tlb->block_cache));
-        tlb->block_cache_gen = asbestos->invalidate_gen;
+        tlb->block_cache_gen = invalidate_gen;
     }
 
     // Use persistent frame from TLB (avoids malloc/free + ret_cache zeroing)
@@ -304,9 +651,10 @@ static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
         // Check if blocks were invalidated since last check (e.g. CoW by another thread).
         // This must be inside the loop, not just at function entry, because invalidation
         // can happen while we're in the JIT cycle (between fiber_enter calls).
-        if (tlb->block_cache_gen != asbestos->invalidate_gen) {
+        invalidate_gen = asbestos_invalidate_gen_load(asbestos);
+        if (tlb->block_cache_gen != invalidate_gen) {
             memset(cache, 0, sizeof(tlb->block_cache));
-            tlb->block_cache_gen = asbestos->invalidate_gen;
+            tlb->block_cache_gen = invalidate_gen;
             memset(frame->ret_cache, 0, sizeof(frame->ret_cache));
             // Any last_block pointer may now refer to a jetsam'd/stale fiber.
             // Drop it whenever invalidate_gen changes, just like other cache
@@ -322,6 +670,12 @@ static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
             interrupt = INT_GPF;
             break;
         }
+
+        // Optional tracepoint at block entry. This complements per-instruction
+        // trace gadgets and helps when a targeted PC only appears as a block
+        // entry (or when the matching instruction exits the block).
+        if (asbestos_should_trace_guest_pc(ip))
+            jit_trace_regs(&frame->cpu);
         size_t cache_index = fiber_cache_hash(ip);
         struct fiber_block *block = cache[cache_index];
         if (block == NULL || block->addr != ip) {
@@ -380,7 +734,7 @@ static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
             // Flush all caches to get fresh host pointers.
             tlb_flush(tlb);
             memset(cache, 0, sizeof(tlb->block_cache));
-            tlb->block_cache_gen = asbestos->invalidate_gen;
+            tlb->block_cache_gen = asbestos_invalidate_gen_load(asbestos);
             memset(frame->ret_cache, 0, sizeof(frame->ret_cache));
             frame->last_block = NULL;
 
@@ -412,7 +766,7 @@ static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
         if (tlb->mem_changes != __atomic_load_n(&tlb->mmu->changes, __ATOMIC_ACQUIRE)) {
             tlb_flush(tlb);
             memset(cache, 0, sizeof(tlb->block_cache));
-            tlb->block_cache_gen = asbestos->invalidate_gen;
+            tlb->block_cache_gen = asbestos_invalidate_gen_load(asbestos);
             memset(frame->ret_cache, 0, sizeof(frame->ret_cache));
             frame->last_block = NULL;
         }

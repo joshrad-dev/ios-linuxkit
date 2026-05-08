@@ -1413,6 +1413,27 @@ atomic_casp_segfault:
     gret
     read_bullshit 64, ldp32_1
 
+// LDPSW Xt, Xt2, [addr] - load pair of signed words into X registers (inline TLB)
+.gadget ldpsw
+    ldr x22, [_pc]
+    add _pc, _pc, #8
+    mov x24, _addr
+    read_prep 64, ldpsw_1       // 8 bytes total (2x4): cross-page if offset > 0xff8
+    ldrsw x23, [_addr]          // val1 (32-bit sign-extended to x23)
+    ldrsw x25, [_addr, #4]      // val2 (32-bit sign-extended to x25)
+    and x8, x22, #0x1f          // rt
+    ubfx x9, x22, #8, #5        // rt2
+    add x10, _cpu, #CPU_x0
+    cmp x8, #31
+    b.eq 1f
+    str x23, [x10, x8, lsl #3]
+1:  cmp x9, #31
+    b.eq 2f
+    str x25, [x10, x9, lsl #3]
+2:  mov _addr, x24
+    gret
+    read_bullshit 64, ldpsw_1
+
 // STP Xn, Xm, [addr] - 64-bit store pair (inline TLB)
 .gadget stp64
     ldr x22, [_pc]
@@ -1548,6 +1569,28 @@ atomic_casp_segfault:
     gret
     read_bullshit 64, ldp32_imm_fast_1
 
+// Fast-path LDPSW Xt, Xt2, [Xn, #imm] (rn!=31, rt!=31, rt2!=31)
+.gadget ldpsw_imm_fast
+    ldr x22, [_pc]
+    add _pc, _pc, #8
+    ubfx x9, x22, #16, #5          // rn
+    ubfx x10, x22, #24, #16
+    sxth x10, w10                  // sign-extend offset
+    add x11, _cpu, #CPU_x0
+    ldr x12, [x11, x9, lsl #3]
+    add _addr, x12, x10
+    and _addr, _addr, #0xffffffffffff
+    mov x24, _addr
+    read_prep 64, ldpsw_imm_fast_1 // 8 bytes (2x4)
+    ldrsw x23, [_addr]
+    ldrsw x25, [_addr, #4]
+    and x8, x22, #0x1f             // rt
+    ubfx x9, x22, #8, #5           // rt2
+    str x23, [x11, x8, lsl #3]
+    str x25, [x11, x9, lsl #3]
+    gret
+    read_bullshit 64, ldpsw_imm_fast_1
+
 // Fast-path STP Wt, Wt2, [Xn, #imm] (rn!=31, rt!=31, rt2!=31)
 .gadget stp32_imm_fast
     ldr x22, [_pc]
@@ -1634,6 +1677,37 @@ atomic_casp_segfault:
 4:  mov _addr, x24
     gret
     read_bullshit 64, ldp32_imm_1
+
+// Fused LDPSW Xt, Xt2, [Xn, #imm] - sign-extending word load pair with signed offset
+.gadget ldpsw_imm
+    ldr x22, [_pc]
+    add _pc, _pc, #8
+    ubfx x9, x22, #16, #5
+    ubfx x10, x22, #24, #16
+    sxth x10, w10
+    add x11, _cpu, #CPU_x0
+    cmp x9, #31
+    b.eq 1f
+    ldr x12, [x11, x9, lsl #3]
+    b 2f
+1:  ldr x12, [_cpu, #CPU_sp]
+2:  add _addr, x12, x10
+    and _addr, _addr, #0xffffffffffff
+    mov x24, _addr
+    read_prep 64, ldpsw_imm_1      // 8 bytes (2x4)
+    ldrsw x23, [_addr]             // val1 (sign-extended)
+    ldrsw x25, [_addr, #4]         // val2 (sign-extended)
+    and x8, x22, #0x1f
+    ubfx x9, x22, #8, #5
+    cmp x8, #31
+    b.eq 3f
+    str x23, [x11, x8, lsl #3]
+3:  cmp x9, #31
+    b.eq 4f
+    str x25, [x11, x9, lsl #3]
+4:  mov _addr, x24
+    gret
+    read_bullshit 64, ldpsw_imm_1
 
 // Fused STP Xt, Xt2, [Xn, #imm] - 64-bit store pair with signed offset
 .gadget stp64_imm
@@ -2461,27 +2535,33 @@ ld4r_store_64:
     and x23, x22, #0x1f        // rt
     ubfx x11, x22, #8, #2      // size (0=8b, 1=16b, 2=32b, 3=64b)
 
-    // Inline TLB read - use read_prep for size 32 (we'll handle actual size in load)
     mov x24, _addr
-    read_prep 32, ldxr_1
 
-    // Load based on size
+    // Use an access-size-matched TLB prep/cross-page path.
     cmp x11, #3
     b.eq ldxr_load64
     cmp x11, #2
     b.eq ldxr_load32
     cmp x11, #1
     b.eq ldxr_load16
+
     // size 0: 8-bit
+    read_prep 8, ldxr_8
     ldrb w0, [_addr]
     b ldxr_done
+
 ldxr_load16:
+    read_prep 16, ldxr_16
     ldrh w0, [_addr]
     b ldxr_done
+
 ldxr_load32:
+    read_prep 32, ldxr_32
     ldr w0, [_addr]
     b ldxr_done
+
 ldxr_load64:
+    read_prep 64, ldxr_64
     ldr x0, [_addr]
 
 ldxr_done:
@@ -2501,7 +2581,10 @@ ldxr_done:
     str _tmp, [x9, x23, lsl #3]
 1:  gret
 
-    read_bullshit 32, ldxr_1
+    read_bullshit 8, ldxr_8
+    read_bullshit 16, ldxr_16
+    read_bullshit 32, ldxr_32
+    read_bullshit 64, ldxr_64
 
 /*
  * STXR — Store exclusive via atomic CAS

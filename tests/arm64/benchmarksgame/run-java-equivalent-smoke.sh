@@ -8,6 +8,7 @@ ISH_BIN="${ISH_BIN:-$PROJECT_DIR/build-arm64-linux/ish}"
 ROOTFS="${ROOTFS:-$PROJECT_DIR/alpine-arm64-fakefs}"
 TIMEOUT_S="${TIMEOUT_S:-1200}"
 REPORT_DIR="${REPORT_DIR:-/workspace/tmp}"
+JAVA_SMOKE_MODE="${JAVA_SMOKE_MODE:-mixed}" # mixed|interpreter
 STAMP="$(date +%Y%m%d-%H%M%S)"
 REPORT="$REPORT_DIR/benchmarksgame-java-equivalent-smoke-$STAMP.md"
 GUEST_WORK="/tmp/benchmarksgame-java-equivalent-smoke"
@@ -107,8 +108,22 @@ set -eu
 export PATH=/usr/lib/jvm/java-21-openjdk/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 cd /tmp/benchmarksgame-java-equivalent-smoke
 mkdir -p out classes
-JAVA_OPTS='-Xint -Xshare:off -Xmx128m -Xms16m'
-JAVAC_OPTS='-J-Xint -J-Xshare:off -J-Xmx128m -J-Xms16m'
+JAVA_SMOKE_MODE="${JAVA_SMOKE_MODE:-mixed}"
+case "$JAVA_SMOKE_MODE" in
+  mixed|default)
+    JAVA_OPTS='-Xmx128m -Xms16m'
+    JAVAC_OPTS='-J-Xmx128m -J-Xms16m'
+    ;;
+  interpreter|xint)
+    JAVA_OPTS='-Xint -Xshare:off -Xmx128m -Xms16m'
+    JAVAC_OPTS='-J-Xint -J-Xshare:off -J-Xmx128m -J-Xms16m'
+    ;;
+  *)
+    echo "unsupported JAVA_SMOKE_MODE=$JAVA_SMOKE_MODE" >&2
+    exit 2
+    ;;
+esac
+echo "__JAVA_MODE:$JAVA_SMOKE_MODE"
 echo "__JAVA_VERSION_BEGIN"
 # Keep HotSpot fatal-error spew bounded if the VM cannot start.
 (timeout 20 sh -c "java $JAVA_OPTS -version 2>&1 | head -80") || true
@@ -162,7 +177,7 @@ GUEST
 
 run_guest() {
     log "Running Java-equivalent Benchmarks Game smoke in guest"
-    guest_capture "sh '$GUEST_WORK/run.sh'" >"$HOST_TMP/guest.log" 2>&1 || true
+    guest_capture "JAVA_SMOKE_MODE='$JAVA_SMOKE_MODE' sh '$GUEST_WORK/run.sh'" >"$HOST_TMP/guest.log" 2>&1 || true
 }
 
 write_report() {
@@ -178,6 +193,7 @@ write_report() {
         echo "- ish binary: $ISH_BIN"
         echo "- rootfs: $ROOTFS"
         echo "- timeout: ${TIMEOUT_S}s"
+        echo "- Java mode: $JAVA_SMOKE_MODE"
         echo "- guest workdir: $GUEST_WORK"
         echo "- Source status: current Benchmarks Game pages do not advertise a Java language row; this runner uses local Java equivalents."
         echo "- Java startup: $java_status"

@@ -767,6 +767,7 @@ extern void gadget_clrex(void);
 // Load/store pair gadgets
 extern void gadget_ldp64(void);
 extern void gadget_ldp32(void);
+extern void gadget_ldpsw(void);
 extern void gadget_ldxp_c(void);
 extern void gadget_stxp_c(void);
 extern void gadget_stp64(void);
@@ -774,11 +775,13 @@ extern void gadget_stp32(void);
 // Fused load/store pair with signed-offset addressing
 extern void gadget_ldp64_imm(void);
 extern void gadget_ldp32_imm(void);
+extern void gadget_ldpsw_imm(void);
 extern void gadget_stp64_imm(void);
 extern void gadget_stp32_imm(void);
 extern void gadget_ldp64_imm_fast(void);
 extern void gadget_stp64_imm_fast(void);
 extern void gadget_ldp32_imm_fast(void);
+extern void gadget_ldpsw_imm_fast(void);
 extern void gadget_stp32_imm_fast(void);
 // SP-relative fused load/store gadgets (rn==31, rd/rt!=31)
 extern void gadget_load64_sp_imm(void);
@@ -897,6 +900,12 @@ static int gen_dp_reg(struct gen_state *state, uint32_t insn);
 static int gen_simd_fp(struct gen_state *state, uint32_t insn);
 
 extern volatile bool g_trace_highbits;
+extern bool asbestos_should_trace_guest_pc(addr_t pc);
+
+static void gen_trace_pc(struct gen_state *state) {
+    gen(state, (unsigned long)gadget_trace);
+    gen(state, (uint64_t)state->orig_ip);
+}
 
 static void gen_trace_highbits(struct gen_state *state) {
     gen(state, (unsigned long)gadget_check_highbits);
@@ -966,6 +975,8 @@ int gen_step(struct gen_state *state, struct tlb *tlb) {
             result = 0; break;
     }
 
+    if (result == 1 && asbestos_should_trace_guest_pc(state->orig_ip))
+        gen_trace_pc(state);
     if (result == 1 && g_trace_highbits)
         gen_trace_highbits(state);
 
@@ -2386,11 +2397,18 @@ static int gen_ldst(struct gen_state *state, uint32_t insn) {
         uint32_t rn = (insn >> 5) & 0x1f;
         uint32_t rt = insn & 0x1f;
 
-        // Compute actual offset (scaled by 4 or 8 based on size)
-        int64_t offset;
-        bool is64 = (opc == 2 || (V && opc == 1));  // 64-bit for opc=10, or SIMD Q
-        offset = imm7 * (is64 ? 8 : 4);
+        // Compute actual offset (scaled by element size).  For GPR pairs,
+        // opc=00 is W LDP/STP, opc=10 is X LDP/STP, and opc=01 with L=1
+        // is LDPSW (two sign-extending 32-bit loads into X registers).
+        // opc=01 stores and opc=11 GPR pairs are unallocated.
+        bool is_ldpsw = (!V && L && opc == 1);
+        bool is64 = (V && opc == 1) || (!V && opc == 2);  // SIMD D or GPR X pair
+        int64_t offset = (int64_t)imm7 * (is64 ? 8 : 4);
 
+        if (!V && (opc == 3 || (opc == 1 && !L))) {
+            gen_interrupt(state, INT_UNDEFINED);
+            return 0;
+        }
 
         if (V) {
             // SIMD/FP load/store pair
@@ -2473,12 +2491,16 @@ static int gen_ldst(struct gen_state *state, uint32_t insn) {
                            | (((uint64_t)(uint16_t)off16) << 24);
             bool fast_pair = rn != 31 && rt != 31 && rt2 != 31;
             void *gadget;
-            if (L)
-                gadget = fast_pair ? (is64 ? gadget_ldp64_imm_fast : gadget_ldp32_imm_fast)
-                                   : (is64 ? gadget_ldp64_imm : gadget_ldp32_imm);
-            else
+            if (L) {
+                if (is_ldpsw)
+                    gadget = fast_pair ? gadget_ldpsw_imm_fast : gadget_ldpsw_imm;
+                else
+                    gadget = fast_pair ? (is64 ? gadget_ldp64_imm_fast : gadget_ldp32_imm_fast)
+                                       : (is64 ? gadget_ldp64_imm : gadget_ldp32_imm);
+            } else {
                 gadget = fast_pair ? (is64 ? gadget_stp64_imm_fast : gadget_stp32_imm_fast)
                                    : (is64 ? gadget_stp64_imm : gadget_stp32_imm);
+            }
             gen(state, (unsigned long) gadget);
             gen(state, param);
             return 1;
@@ -2499,7 +2521,7 @@ static int gen_ldst(struct gen_state *state, uint32_t insn) {
 
         // Step 2: Perform the load/store pair
         if (L) {
-            gen(state, (unsigned long) (is64 ? gadget_ldp64 : gadget_ldp32));
+            gen(state, (unsigned long) (is_ldpsw ? gadget_ldpsw : (is64 ? gadget_ldp64 : gadget_ldp32)));
         } else {
             gen(state, (unsigned long) (is64 ? gadget_stp64 : gadget_stp32));
         }

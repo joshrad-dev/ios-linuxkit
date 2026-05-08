@@ -8,12 +8,14 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <stddef.h>
+#include <stdarg.h>
 #include "kernel/calls.h"
 #include "kernel/task.h"
 #include "fs/path.h"
 #include "emu/cpu.h"
 #include "emu/tlb.h"
 #include "asbestos/frame.h"
+#include "asbestos/asbestos.h"
 #include "platform/host_context_aarch64.h"
 #include "xX_main_Xx.h"
 
@@ -112,11 +114,14 @@ static void crash_handler(int sig, siginfo_t *info, void *ctx) {
         "pc:  0x%llx\nlr:  0x%llx\nsp:  0x%llx\n"
         "x0:  0x%llx\nx1:  0x%llx\nx2:  0x%llx\n"
         "x7:  0x%llx\nx28: 0x%llx\n",
-        host_ctx_aarch64_pc(uc), host_ctx_aarch64_lr(uc),
-        host_ctx_aarch64_sp(uc),
-        host_ctx_aarch64_reg(uc, 0), host_ctx_aarch64_reg(uc, 1),
-        host_ctx_aarch64_reg(uc, 2),
-        host_ctx_aarch64_reg(uc, 7), host_ctx_aarch64_reg(uc, 28));
+        (unsigned long long) host_ctx_aarch64_pc(uc),
+        (unsigned long long) host_ctx_aarch64_lr(uc),
+        (unsigned long long) host_ctx_aarch64_sp(uc),
+        (unsigned long long) host_ctx_aarch64_reg(uc, 0),
+        (unsigned long long) host_ctx_aarch64_reg(uc, 1),
+        (unsigned long long) host_ctx_aarch64_reg(uc, 2),
+        (unsigned long long) host_ctx_aarch64_reg(uc, 7),
+        (unsigned long long) host_ctx_aarch64_reg(uc, 28));
     write(STDERR_FILENO, buf, len);
 #endif
     void *bt[20];
@@ -140,6 +145,30 @@ static char *trim_ascii_space(char *s) {
     while (end > s && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
         *--end = '\0';
     return s;
+}
+
+static void append_boot_env(char *envp, size_t cap, size_t *offset, const char *fmt, ...) {
+    if (*offset >= cap)
+        return;
+
+    va_list ap;
+    va_start(ap, fmt);
+    int needed = vsnprintf(envp + *offset, cap - *offset, fmt, ap);
+    va_end(ap);
+
+    if (needed < 0)
+        return;
+
+    size_t n = (size_t) needed;
+    if (n >= cap - *offset) {
+        // Truncated entry; stop appending to avoid pointer/size underflow.
+        *offset = cap;
+        envp[cap - 1] = '\0';
+        return;
+    }
+
+    // Entries are NUL-separated for xX_main_Xx.
+    *offset += n + 1;
 }
 
 static void ensure_guest_runtime_dirs(void) {
@@ -223,6 +252,10 @@ int main(int argc, char *const argv[]) {
     g_trace_highbits = trace_highbits && trace_highbits[0] && strcmp(trace_highbits, "0") != 0;
     const char *trace_faults = getenv("ISH_TRACE_FAULTS");
     g_trace_faults = trace_faults && trace_faults[0] && strcmp(trace_faults, "0") != 0;
+    asbestos_set_trace_pcs(getenv("ISH_TRACE_PCS"));
+    asbestos_set_trace_gate(getenv("ISH_TRACE_GATE_PC"),
+                            getenv("ISH_TRACE_GATE_X4"),
+                            getenv("ISH_TRACE_GATE_BUDGET"));
 #endif
 
     static char altstack[SIGSTKSZ];
@@ -238,15 +271,14 @@ int main(int argc, char *const argv[]) {
     sigaction(SIGTRAP, &sa, NULL);
     char envp[512] = {0};
     size_t p = 0;
-    if (getenv("TERM")) {
-        const char *term = getenv("TERM");
-        p += snprintf(envp + p, sizeof(envp) - p, "TERM=%s", term) + 1;
-    }
-    p += snprintf(envp + p, sizeof(envp) - p, "HOME=/root") + 1;
-    p += snprintf(envp + p, sizeof(envp) - p, "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin") + 1;
+    append_boot_env(envp, sizeof(envp), &p, "HOME=/root");
+    append_boot_env(envp, sizeof(envp), &p, "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
 #ifdef GUEST_ARM64
-    p += snprintf(envp + p, sizeof(envp) - p, "PYTHONMALLOC=malloc") + 1;
+    append_boot_env(envp, sizeof(envp), &p, "PYTHONMALLOC=malloc");
 #endif
+    const char *term = getenv("TERM");
+    if (term && term[0] != '\0')
+        append_boot_env(envp, sizeof(envp), &p, "TERM=%s", term);
     int err = xX_main_Xx(argc, argv, envp);
     if (err < 0) {
         fprintf(stderr, "xX_main_Xx: %s\n", strerror(-err));
