@@ -4,7 +4,8 @@ Date: 2026-05-10
 
 ## Known-good code
 
-- Commit: `225e00be` (`platform: centralize host shims and fix proc units`)
+- Commit: `c898346f` (`arm64: distinguish barrier synchronization gadgets`)
+- Tag: `arm64-openjdk21-prod-20260510-r2`
 - Branch pushed: `master`
 - Remote pushed: `https://github.com/rcarmo/ish-arm64.git`
 
@@ -39,11 +40,11 @@ Date: 2026-05-10
 
 ## Validation artifacts
 
-- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260510-084353.md`
-  - Result: 27 / 27 passing
+- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260510-101513.md`
+  - Result: 28 / 28 passing
 - Go Benchmarks Game smoke: `/workspace/tmp/benchmarksgame-go-smoke-20260510-084223.md`
   - Result: 10 / 10 passing
-- Default mixed-mode Java Hello smoke: `/workspace/tmp/java-hello-platform-audit-20260510-0840.log`
+- Default mixed-mode Java Hello smoke: `/workspace/tmp/java-hello-barrier-audit-20260510.log`
   - `javac_rc:0`
   - `java_rc:0`
 - Production baseline capture: `/workspace/tmp/ish-arm64-production-baseline-20260510.txt`
@@ -52,11 +53,12 @@ Date: 2026-05-10
 
 - OpenJDK default mixed mode is enabled; no `-Xint`, `-XX:-UseCompiler`, `ReplayIgnoreInitErrors`, `DisableIntrinsic`, or runtime/user-data patch is required for the validated Java smoke.
 - ARM64 synthetic non-null read-fault recovery remains compile-time gated by `ENABLE_ARM64_READ_FAULT_RECOVERY` and disabled in production builds.
-- Guest self-modifying/JIT-patched code invalidation, `CLREX`, `LDXR` widths, `LDPSW`, and per-thread `sigaltstack` are covered by runtime fixtures.
+- Guest self-modifying/JIT-patched code invalidation, `CLREX`, `LDXR` widths, `LDPSW`, `DMB`/`DSB`/`ISB`, and per-thread `sigaltstack` are covered by runtime fixtures.
 - Host OS differences for sysinfo, thread rusage, fd path lookup, stat timestamp fields, random bytes, thread naming, and memory-pressure hooks are centralized through `platform/platform.h`.
 
 ## Rollback point
 
+- Roll back to `b38c6239b08270889fc32a33c7095cf376785ba6` if the barrier-audit tranche regresses production behavior.
 - Roll back to `0711a849c96889c1225bf4e253607bbd8c4abd7d` if the platform/proc audit tranche regresses production behavior.
 - Roll back to `6ea7153e` only if Java C2/LDPSW behavior must be isolated from the Go `sigaltstack` fix.
 
