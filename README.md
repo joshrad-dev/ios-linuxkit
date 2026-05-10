@@ -56,7 +56,7 @@ The first tranche centralizes FD-path lookup, stat timestamp fields, host random
 
 ## Current coverage status
 
-Latest staged runtime report: **27 / 27 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260510-084353.md`, `TIMEOUT_S=180`, `INSTALL_TIMEOUT_S=300`). Base shell/APK, C, SysV IPC, high-value syscall gap coverage, ARM64 DC ZVA coverage, ARM64 signal-ucontext and per-thread `sigaltstack` coverage, ARM64 CCMP/CCMN NV-condition coverage, ARM64 self-modifying-code invalidation coverage, Go, Bun, and Node/npm are green in the Linux-host coverage harness.
+Latest staged runtime report: **27 / 27 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260510-084353.md`, `TIMEOUT_S=180`, `INSTALL_TIMEOUT_S=300`). Base shell/APK, C, SysV IPC, high-value syscall gap coverage, ARM64 DC ZVA coverage, ARM64 signal-ucontext and per-thread `sigaltstack` coverage, ARM64 CCMP/CCMN NV-condition coverage, ARM64 self-modifying-code invalidation coverage, Go, Bun, and Node/npm are green in the Linux-host coverage harness. The current production package baseline is recorded in [docs/ARM64_PRODUCTION_BASELINE.md](docs/ARM64_PRODUCTION_BASELINE.md).
 
 | Area | Status | Notes |
 |---|---:|---|
