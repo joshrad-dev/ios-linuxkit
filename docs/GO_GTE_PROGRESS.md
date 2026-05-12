@@ -4,6 +4,7 @@ See also: [ARM64 workload smoke tests](ARM64_WORKLOAD_SMOKE_TESTS.md), the centr
 
 Date: 2026-05-02
 Updated: 2026-05-03 05:58 UTC
+Reviewed: 2026-05-12; status remains current in the workload index.
 
 ## Goal
 

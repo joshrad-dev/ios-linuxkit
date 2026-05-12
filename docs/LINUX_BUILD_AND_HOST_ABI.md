@@ -75,16 +75,23 @@ Linux AArch64 uses a different ABI:
 
 The new header keeps `main.c` independent of those layout details.
 
-## 2. Host filesystem/fd-path ABI in fakefs bind mounts
+## 2. Host platform ABI
 
-File:
+Files:
 
-- `fs/fake.c`
+- `platform/platform.h`
+- `platform/linux.c`
+- `platform/darwin.c`
 
 This now uses small host-abstraction helpers for:
 
 - stat timestamp extraction
 - root-fd → absolute-path lookup
+- host `sysinfo` values used by guest `sysinfo(2)`
+- per-thread CPU usage used by guest `getrusage`/times paths
+- host random bytes
+- thread naming
+- host memory-pressure cleanup hooks
 
 ### Why this matters
 
@@ -98,7 +105,7 @@ Linux needs:
 - `/proc/self/fd/<n>` + `readlink()` for fd path lookup
 - `st_atim`, `st_mtim`, `st_ctim`
 
-The helpers keep those differences localized.
+The helpers keep those differences localized under `platform/` instead of spreading direct `__linux__`/`__APPLE__` branches through generic kernel and filesystem code.
 
 ---
 
@@ -133,8 +140,7 @@ Validation after the fix:
 
 - `make build-arm64-linux-all` passes.
 - 50 consecutive minimal Bun local `file:` install repro runs passed.
-- staged runtime coverage initially improved to **18 / 20 passing**; after the
-  JavaScriptCore GC shims below it is **20 / 20 passing**.
+- staged runtime coverage is now **28 / 28 passing** after subsequent syscall, signal, Java, barrier, and runtime fixture additions.
 
 
 ## JavaScriptCore GC compatibility shims
@@ -250,7 +256,7 @@ Directory reads now propagate or infer Linux `DT_*` values:
 
 Validation: a minimal Bun recursive `fs.cpSync` directory tree copy succeeds,
 PiClaw no longer logs the bootstrap `ENOTSUP ... copyfile` warning, and staged
-runtime coverage remains 20/20.
+runtime coverage remains **28 / 28 passing**.
 
 ## Current ABI shape
 
@@ -268,9 +274,12 @@ The practical host-facing ABI is now:
 - `platform/darwin.c`
 - `platform/platform.h`
 
-### Fakefs/path ABI
+### Platform/fakefs/path ABI
 
-- localized helpers in `fs/fake.c`
+- `platform/platform.h`
+- `platform/linux.c`
+- `platform/darwin.c`
+- call sites in `fs/fake.c`, `fs/real.c`, `kernel/calls.c`, `kernel/resource.c`, and `kernel/uname.c`
 
 ### JIT fault/retry ABI
 
@@ -284,10 +293,10 @@ The practical host-facing ABI is now:
 - ARM64 exec-time environment injection in `kernel/exec.c`, currently including
   `GODEBUG=asyncpreemptoff=1`, `GOMAXPROCS=2`, `JSC_numberOfGCMarkers=1`, and `JSC_useConcurrentGC=0`
 
-This is not yet a full `host_*` layer, but it is a clear first split:
+This is not yet a full `host_*` layer, but it is a clear split:
 
 - register/context access is no longer open-coded per host
-- fakefs no longer assumes Apple-only fd/path APIs
+- generic filesystem/kernel paths no longer assume Apple-only fd/path, stat timestamp, sysinfo, rusage, random-byte, thread-name, or memory-pressure APIs
 - ARM64 JIT crash recovery no longer assumes block-start retry is safe for every memory fault
 - runtime-specific compatibility shims are documented where they cross signal/threading ABI boundaries
 
@@ -295,10 +304,10 @@ This is not yet a full `host_*` layer, but it is a clear first split:
 
 ## Recommended next cleanup
 
-If we want the Linux/macOS/iOS split to stay clean as the project grows, the next
-small refactor should be:
+The next cleanup candidates are the remaining host branches that are implementation-specific and not on the Linux ARM64 Java production path:
 
-- move fd-path lookup and stat-timestamp helpers out of `fs/fake.c`
-- into a narrow host API, e.g. `platform/host_fs_abi.h`
+- native offload (`kernel/native_offload.c`) is Darwin/macOS-oriented by design;
+- polling/socket glue still has epoll/kqueue and socket-option ABI branches;
+- low-level synchronization keeps Linux monotonic `pthread_cond_timedwait` and Darwin relative-time waits separate.
 
-That would make the host seams explicit in the same way the signal/ucontext seam now is.
+Keep these differences documented and narrow; move them behind platform helpers when a second call site or a correctness issue appears.

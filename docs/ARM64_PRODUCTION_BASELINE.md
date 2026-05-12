@@ -1,11 +1,12 @@
 # ARM64 Production Baseline
 
 Date: 2026-05-10
+Reviewed: 2026-05-12
 
 ## Known-good code
 
-- Commit: `4c1bc37c` (`util: fix timed wait normalization`)
-- Tag: `arm64-openjdk21-prod-20260510-r3`
+- Code commit: `4c1bc37c` (`util: fix timed wait normalization`)
+- Baseline tag: `arm64-openjdk21-prod-20260510-r3`
 - Branch pushed: `master`
 - Remote pushed: `https://github.com/rcarmo/ish-arm64.git`
 

@@ -286,11 +286,12 @@ The coverage script currently exercises, in order:
 5. ARM64 `DCZID_EL0` / `dc zva` sysreg and instruction coverage;
 6. ARM64 signal `ucontext_t` layout and null-SIGSEGV delivery coverage;
 7. ARM64 `CCMP`/`CCMN` condition-code-15 (`NV`) coverage;
-8. ARM64 self-modifying-code/code-patch invalidation coverage;
-9. Per-thread `sigaltstack` coverage for pthread/Go-style signal stacks;
-10. Go (`go version`, `go env`, `go tool compile`, `go run`, `go build`, `go test`);
-11. Bun (`bun --version`, local `file:` dependency install, TypeScript run, test, build);
-12. Node/npm (`node --version`, `node -e`, `npm --version`, `npm run`).
+8. ARM64 `DMB`/`DSB`/`ISB` barrier decoding/execution coverage;
+9. ARM64 self-modifying-code/code-patch invalidation coverage;
+10. Per-thread `sigaltstack` coverage for pthread/Go-style signal stacks;
+11. Go (`go version`, `go env`, `go tool compile`, `go run`, `go build`, `go test`);
+12. Bun (`bun --version`, local `file:` dependency install, TypeScript run, test, build);
+13. Node/npm (`node --version`, `node -e`, `npm --version`, `npm run`).
 
 Each run writes a Markdown report named
 `ish-arm64-runtime-coverage-YYYYMMDD-HHMMSS.md` under `REPORT_DIR`. The suite is
@@ -308,6 +309,7 @@ Current Linux-host status from this pass:
 - ARM64 DC ZVA coverage is green: `DCZID_EL0` reports a 64-byte block and `dc zva` zeros the expected naturally aligned block.
 - ARM64 signal ucontext coverage is green: guest SIGSEGV handlers see `uc_mcontext` at offset 176 with correct PC/SP/LR, and null read faults reach handlers instead of being converted to zero loads.
 - ARM64 conditional-compare coverage is green: `CCMP`/`CCMN` with condition code 15 (`NV`) now follows AArch64 hardware and performs the compare instead of taking the false-immediate path.
+- ARM64 barrier coverage is green: `DMB`, `DSB`, and `ISB` decode to distinct host synchronization gadgets; folded CRm domains use conservative full-system host barriers.
 - ARM64 self-modifying-code coverage is green: writes to a previously translated RWX page invalidate stale translated blocks before a subsequent indirect call executes the patched bytes.
 - Go coverage is green: `go version`, `go env`, `go tool compile`, `go run`,
   `go build` + execute, `go test`, and Benchmarks Game Go 10/10 all pass; iSH now keeps `sigaltstack` state per thread so Go signal handlers use the correct M/thread signal stack.
@@ -388,8 +390,10 @@ Darwin-only structures and APIs:
 
 - `platform/host_context_aarch64.h` normalizes the AArch64 signal/ucontext ABI
   used by JIT crash recovery on macOS and Linux.
-- `fs/fake.c` now localizes fd-path and stat-timestamp differences instead of
-  assuming `F_GETPATH` and `st_*timespec` everywhere.
+- `platform/platform.h` now exposes host fd-path lookup, stat timestamps, random
+  bytes, `sysinfo`, per-thread CPU usage, thread naming, and memory-pressure
+  hooks with Linux and Darwin implementations.
+- remaining host-specific branches in native offload, sockets/polling, and low-level synchronization are documented as future cleanup candidates rather than part of the Java/OpenJDK production path.
 
 See also:
 
@@ -470,7 +474,7 @@ architectures tested under fakefs with the same installed package set. Full repo
 
 ## Commit History
 
-86 commits on `feature-arm64`, 101 files changed, +23,198 / -7,620 lines.
+This branch has accumulated a focused ARM64 bring-up stack on top of upstream iSH; exact commit/file counts vary as the production audit is rebased and documented, so treat the list below as the durable milestone map rather than a static diffstat.
 
 Major milestones:
 1. **Interpreter foundation**: fiber_enter/exit, basic block compilation (to gadget program), TLB
@@ -537,4 +541,4 @@ iSH/
 
 ## License
 
-Same as upstream iSH. See [LICENSE](LICENSE).
+Same as upstream iSH. See [LICENSE](LICENSE.md).

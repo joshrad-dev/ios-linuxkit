@@ -1,10 +1,10 @@
 # Benchmarks Game ARM64 iSH test case
 
-Status: planned next workload gate.
+Status: active workload gate for the currently feasible Alpine aarch64 rows.
 
 Primary design document: [`../../../docs/ARM64_WORKLOAD_SMOKE_TESTS.md`](../../../docs/ARM64_WORKLOAD_SMOKE_TESTS.md).
 
-This directory is reserved for the repeatable harness that will turn the Benchmarks Game corpus into an ARM64 iSH smoke test. The intended shape is:
+This directory contains the repeatable harnesses that turn the Benchmarks Game corpus into ARM64 iSH smoke tests. The active shape is:
 
 1. discover active benchmark/language/source variants from the official performance pages;
 2. install or verify the selected Alpine aarch64 toolchains;
@@ -12,7 +12,7 @@ This directory is reserved for the repeatable harness that will turn the Benchma
 4. record unsupported official language labels explicitly instead of silently skipping them;
 5. classify failures as toolchain/setup, benchmark-source, or iSH syscall/instruction/runtime bugs.
 
-The first target tier should cover one representative implementation per active benchmark for the already-validated runtimes: `gcc`, `gpp`, `go`, `python3`, `node`, `php`, `perl`, `ruby`, and `lua`.
+The first target tier now covers one representative implementation per active benchmark for the already-validated runtimes: `gcc`, `gpp`, `go`, `python3`, `node`, `php`, `perl`, `ruby`, and `lua`. A local Java-equivalent lane covers OpenJDK because the current Benchmarks Game pages do not advertise a Java row.
 
 ## Discovery matrix
 

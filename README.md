@@ -19,6 +19,8 @@ We have been progressively hardening the ARM64 guest backend and replacing ad-ho
 - Added `tests/arm64/runtime-coverage.sh`, a staged coverage gate for:
   - base shell, `apk`, tmp file I/O
   - C compile and execute
+  - SysV IPC and high-value syscall gaps
+  - ARM64 ISA/runtime fixtures: DC ZVA, signal `ucontext_t`, per-thread `sigaltstack`, CCMP/CCMN `NV`, DMB/DSB/ISB barriers, and self-modifying-code invalidation
   - Go compile/run/build/test
   - Bun install/run/test/build
   - Node/npm version/eval/run
@@ -34,7 +36,7 @@ Host OS differences are being moved behind `platform/platform.h` with one implem
 - `platform/linux.c`
 - `platform/darwin.c` for macOS/iOS-family hosts
 
-The first tranche centralizes FD-path lookup, stat timestamp fields, host random bytes, and thread naming so core emulator/kernel code no longer needs direct `__linux__`/`__APPLE__` branches for those details.
+The current split centralizes FD-path lookup, stat timestamp fields, host random bytes, thread naming, host `sysinfo`, per-thread CPU usage, and memory-pressure hooks so core emulator/kernel code no longer needs direct `__linux__`/`__APPLE__` branches for those details.
 
 ### Emulator/runtime fixes so far
 
@@ -66,8 +68,9 @@ Latest staged runtime report: **28 / 28 passing** (`/workspace/tmp/ish-arm64-run
 | ARM64 DC ZVA | Passing | `DCZID_EL0` reports a 64-byte block and `dc zva` zeros the expected aligned block. |
 | ARM64 signal ucontext | Passing | Guest SIGSEGV handlers now see Linux/musl-compatible `ucontext_t` (`uc_mcontext` offset 176), and null read faults are delivered instead of synthesized as zero loads. |
 | ARM64 CCMP/CCMN NV | Passing | Conditional compare now treats condition code 15 (`NV`) like AArch64 hardware does for these instructions: condition true, not false-immediate fallback. |
+| ARM64 barriers | Passing | Guest `DMB`, `DSB`, and `ISB` decode to distinct host synchronization gadgets; folded CRm domains use conservative full-system host barriers. |
 | ARM64 self-modifying code | Passing | Guest writes to previously translated code pages invalidate stale translated blocks at block boundaries; required for JIT/code-patching workloads. |
-| Java/OpenJDK | Passing default mixed-mode smoke | OpenJDK 21 starts; default mixed-mode `javac Hello.java` and `java Hello` pass; Java-equivalent Benchmarks Game passes 10/10 in default mixed mode, with `JAVA_SMOKE_MODE=interpreter` still available as conservative fallback coverage. |
+| Java/OpenJDK | Passing default mixed-mode smoke | OpenJDK 21.0.10 starts; default mixed-mode `javac Hello.java` and `java Hello` pass; Java-equivalent Benchmarks Game passes 10/10 in default mixed mode, with `JAVA_SMOKE_MODE=interpreter` still available as conservative fallback coverage. |
 | Go | Passing | `go version`, `go env`, `go tool compile`, `go run`, `go build`, `go test`, and Benchmarks Game Go 10/10 pass; per-thread `sigaltstack` handling now matches Linux for Go signal stacks. |
 | Node/npm | Passing | `node -e`, `npm --version`, and `npm run` pass after mmap/reservation and `pwritev` fixes. |
 | Bun | Passing | `bun --version`, local `file:` dependency install, TypeScript run, `bun test`, and `bun build` all pass in the staged harness. |

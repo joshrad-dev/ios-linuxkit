@@ -1,6 +1,6 @@
 # ARM64 iSH workload smoke tests
 
-Updated: 2026-05-03
+Updated: 2026-05-12
 
 ## Purpose
 
@@ -42,7 +42,8 @@ report: /workspace/tmp/ish-arm64-runtime-coverage-20260510-102148.md
 Why it matters:
 
 - Establishes the guest can boot, run shell commands, update package indexes, and do basic file I/O.
-- Confirms C compile/execute, SysV shared-memory/message-queue IPC across `fork()`, per-thread `sigaltstack`, and Go compile/run/build/test paths.
+- Confirms C compile/execute, SysV shared-memory/message-queue IPC across `fork()`, high-value syscall gaps, per-thread `sigaltstack`, and Go compile/run/build/test paths.
+- Keeps ARM64 generated-code-sensitive fixtures in the standard gate, including DC ZVA, signal `ucontext_t`, CCMP/CCMN `NV`, DMB/DSB/ISB barriers, and self-modifying-code invalidation.
 - Keeps Bun and Node/npm smoke coverage in the standard gate so JS runtime regressions are caught quickly.
 
 ## Bun + PiClaw workload
