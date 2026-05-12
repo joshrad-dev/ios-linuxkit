@@ -55,10 +55,11 @@ The current split centralizes FD-path lookup, stat timestamp fields, host random
 - Fixed ARM64 `CLREX` semantics: it now clears both single and pair exclusive monitor state instead of acting as a NOP, so post-`CLREX` `STXR`/`STXP` correctly fail.
 - Added small atomic repro sources under `tests/arm64/atomics/` for LDXP/STLXP, CAS128, and CLREX+STXR/STXP semantics.
 - Stopped advertising optional ARM64 crypto/LSE features in `AT_HWCAP` until those helper sets are fully coverage-clean; runtimes can fall back to baseline FP/ASIMD paths.
+- Hardened production-adjacent launch and logging paths found during the final audit: bounded `printk`/`die` formatting, exact comma-separated mount-option parsing, bounded initial argv construction, safe `PT_INTERP` path loading, safe shebang argument trimming, and safe `TERM` environment construction in `ptraceomatic`.
 
 ## Current coverage status
 
-Latest staged runtime report: **28 / 28 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260512-065414.md`, `TIMEOUT_S=180`, `INSTALL_TIMEOUT_S=300`). Base shell/APK, C, SysV IPC, high-value syscall gap coverage, ARM64 DC ZVA coverage, ARM64 signal-ucontext and per-thread `sigaltstack` coverage, ARM64 CCMP/CCMN NV-condition coverage, ARM64 DMB/DSB/ISB barrier coverage, ARM64 self-modifying-code invalidation coverage, Go, Bun, and Node/npm are green in the Linux-host coverage harness. The current production package baseline is recorded in [docs/ARM64_PRODUCTION_BASELINE.md](docs/ARM64_PRODUCTION_BASELINE.md), and the local Linux production deployment/post-deploy Java smoke is recorded in [docs/ARM64_PRODUCTION_DEPLOYMENT.md](docs/ARM64_PRODUCTION_DEPLOYMENT.md).
+Latest staged runtime report: **28 / 28 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260512-070511.md`, `TIMEOUT_S=180`, `INSTALL_TIMEOUT_S=300`). Base shell/APK, C, SysV IPC, high-value syscall gap coverage, ARM64 DC ZVA coverage, ARM64 signal-ucontext and per-thread `sigaltstack` coverage, ARM64 CCMP/CCMN NV-condition coverage, ARM64 DMB/DSB/ISB barrier coverage, ARM64 self-modifying-code invalidation coverage, Go, Bun, and Node/npm are green in the Linux-host coverage harness. The current production package baseline is recorded in [docs/ARM64_PRODUCTION_BASELINE.md](docs/ARM64_PRODUCTION_BASELINE.md), and the local Linux production deployment/post-deploy Java smoke is recorded in [docs/ARM64_PRODUCTION_DEPLOYMENT.md](docs/ARM64_PRODUCTION_DEPLOYMENT.md).
 
 | Area | Status | Notes |
 |---|---:|---|

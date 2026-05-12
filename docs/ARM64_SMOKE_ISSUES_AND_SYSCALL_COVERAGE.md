@@ -145,4 +145,17 @@ Noisy ARM64 fault diagnostics (`page fault ...`, register dumps, block instructi
 
 ARM64 iSH now keeps guest barrier classes distinct at translation time: `DMB` emits a host `dmb`, `DSB` emits a host `dsb`, and `ISB` emits a host `isb`. Because the current decoder folds all CRm shareability/domain variants into one gadget per barrier class, the `DMB` and `DSB` gadgets use the strongest host `sy` domain so guest `SY`/`LD`/`ST` forms are not under-serialized.
 
-The staged runtime suite includes `arm64 barriers DMB/DSB/ISB`, which compiles and executes common barrier encodings (`dmb sy`, `dmb ish`, `dmb ishld`, `dmb ishst`, `dsb sy`, `dsb ish`, and `isb`) inside the guest. Latest staged coverage is `/workspace/tmp/ish-arm64-runtime-coverage-20260512-065414.md` with **28 / 28 passing**.
+The staged runtime suite includes `arm64 barriers DMB/DSB/ISB`, which compiles and executes common barrier encodings (`dmb sy`, `dmb ish`, `dmb ishld`, `dmb ishst`, `dsb sy`, `dsb ish`, and `isb`) inside the guest. Latest staged coverage is `/workspace/tmp/ish-arm64-runtime-coverage-20260512-070511.md` with **28 / 28 passing**.
+
+## 2026-05-12 production audit hardening
+
+The post-production code-smell/logic audit fixed several low-risk but concrete robustness issues outside the ARM64 instruction core:
+
+- `kernel/log.c` now uses bounded `vsnprintf()` for `printk`/`die` formatting instead of unbounded `vsprintf()`.
+- `fs/mount.c` now parses comma-separated mount option flags as exact tokens and advances past commas correctly, avoiding prefix matches and an infinite-loop edge case.
+- Initial launch argument construction in `xX_main_Xx.h` is bounds-checked before copying argv entries and injected Node flags into the fixed-size startup buffer.
+- ELF `PT_INTERP` loading in `kernel/exec.c` now rejects empty/oversized interpreter names, checks short reads safely, and explicitly NUL-terminates the path before opening it.
+- Shebang optional-argument trimming no longer walks before the argument string when there is no optional argument.
+- `tools/ptraceomatic.c` now constructs `TERM=...` directly instead of reading memory before the pointer returned by `getenv("TERM")`.
+
+Validation after these changes: `make build-arm64-linux-all`, staged runtime coverage **28 / 28 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260512-070511.md`), and default mixed-mode Java Hello (`/workspace/tmp/java-hello-audit-pass2-20260512.log`, `javac_rc:0`, `java_rc:0`).

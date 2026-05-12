@@ -19,6 +19,15 @@
 
 void real_tty_reset_term(void);
 
+static inline int append_exec_arg(char *buf, size_t cap, size_t *pos, const char *arg) {
+    size_t len = strlen(arg) + 1;
+    if (*pos > cap || len > cap - *pos)
+        return _E2BIG;
+    memcpy(buf + *pos, arg, len);
+    *pos += len;
+    return 0;
+}
+
 static void exit_handler(struct task *task, int code) {
     if (task->parent != NULL)
         return;
@@ -85,8 +94,11 @@ static inline int xX_main_Xx(int argc, char *const argv[], const char *envp) {
         perror(root);
         exit(1);
     }
-    if (fs == &fakefs)
+    if (fs == &fakefs) {
+        if (strlen(root_realpath) + strlen("/data") >= sizeof(root_realpath))
+            return _ENAMETOOLONG;
         strcat(root_realpath, "/data");
+    }
     int err = mount_root(fs, root_realpath);
     if (err < 0)
         return err;
@@ -138,8 +150,8 @@ static inline int xX_main_Xx(int argc, char *const argv[], const char *envp) {
         base = base ? base + 1 : argv[optind];
         if (strcmp(base, "node") == 0) {
             // Copy argv[0] first
-            strcpy(&argv_copy[p], argv[optind]);
-            p += strlen(argv[optind]) + 1;
+            if ((err = append_exec_arg(argv_copy, sizeof(argv_copy) - 1, &p, argv[optind])) < 0)
+                return err;
             exec_argc++;
             // Inject V8 flags to work around scope corruption
             static const char *v8_flags[] = {
@@ -149,14 +161,14 @@ static inline int xX_main_Xx(int argc, char *const argv[], const char *envp) {
                 "--max-old-space-size=512",
             };
             for (int fi = 0; fi < (int)(sizeof(v8_flags)/sizeof(v8_flags[0])); fi++) {
-                strcpy(&argv_copy[p], v8_flags[fi]);
-                p += strlen(v8_flags[fi]) + 1;
+                if ((err = append_exec_arg(argv_copy, sizeof(argv_copy) - 1, &p, v8_flags[fi])) < 0)
+                    return err;
                 exec_argc++;
             }
             // Copy remaining args (skip argv[optind])
             for (i = optind + 1; i < argc; i++) {
-                strcpy(&argv_copy[p], argv[i]);
-                p += strlen(argv[i]) + 1;
+                if ((err = append_exec_arg(argv_copy, sizeof(argv_copy) - 1, &p, argv[i])) < 0)
+                    return err;
                 exec_argc++;
             }
             argv_copy[p] = '\0';
@@ -165,8 +177,8 @@ static inline int xX_main_Xx(int argc, char *const argv[], const char *envp) {
     }
 #endif
     while (i < argc) {
-        strcpy(&argv_copy[p], argv[i]);
-        p += strlen(argv[i]) + 1;
+        if ((err = append_exec_arg(argv_copy, sizeof(argv_copy) - 1, &p, argv[i])) < 0)
+            return err;
         exec_argc++;
         i++;
     }

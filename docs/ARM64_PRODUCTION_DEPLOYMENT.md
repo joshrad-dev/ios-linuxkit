@@ -24,6 +24,8 @@ This host can validate and stage the ARM64 Linux iSH production binary/rootfs ba
 - Alpine release: `3.23.4`
 - OpenJDK package baseline: `openjdk21-jdk-21.0.10_p7-r0`
 
+Note: later audit tags through `arm64-openjdk21-prod-20260510-r5` were validated on the same rootfs with staged runtime coverage and default mixed-mode Java Hello. The local deployment artifact above intentionally records the binary/rootfs staged at deployment time; regenerate the artifact directory if an external release wants the exact r5 binary payload.
+
 ## Post-deploy Java smoke
 
 Command shape:

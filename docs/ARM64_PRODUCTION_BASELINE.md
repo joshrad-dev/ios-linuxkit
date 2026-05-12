@@ -5,8 +5,8 @@ Reviewed: 2026-05-12
 
 ## Known-good code
 
-- Code commit: `d8fcd200` (`audit: harden logging and mount option parsing`)
-- Baseline tag: `arm64-openjdk21-prod-20260510-r4`
+- Code baseline: `arm64-openjdk21-prod-20260510-r5` (post-production audit pass covering bounded logging, mount option parsing, exec/shebang argument safety, `PT_INTERP` bounds/NUL handling, and ptraceomatic `TERM` environment construction)
+- Previous code commit before this documentation review: `2074a6a4` (`docs: refresh baseline after final audit sweep`)
 - Branch pushed: `master`
 - Remote pushed: `https://github.com/rcarmo/ish-arm64.git`
 
@@ -41,11 +41,11 @@ Reviewed: 2026-05-12
 
 ## Validation artifacts
 
-- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260512-065414.md`
+- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260512-070511.md`
   - Result: 28 / 28 passing
 - Go Benchmarks Game smoke: `/workspace/tmp/benchmarksgame-go-smoke-20260510-084223.md`
   - Result: 10 / 10 passing
-- Default mixed-mode Java Hello smoke: `/workspace/tmp/java-hello-final-audit-20260512.log`
+- Default mixed-mode Java Hello smoke: `/workspace/tmp/java-hello-audit-pass2-20260512.log`
   - `javac_rc:0`
   - `java_rc:0`
 - Production baseline capture: `/workspace/tmp/ish-arm64-production-baseline-20260510.txt`
@@ -54,12 +54,14 @@ Reviewed: 2026-05-12
 ## Production-readiness notes
 
 - OpenJDK default mixed mode is enabled; no `-Xint`, `-XX:-UseCompiler`, `ReplayIgnoreInitErrors`, `DisableIntrinsic`, or runtime/user-data patch is required for the validated Java smoke.
+- The final audit pass also hardens host/guest launch plumbing: initial argv construction is bounds-checked, ELF `PT_INTERP` names are bounded and explicitly NUL-terminated, shebang trimming no longer walks before the optional argument string, and ptraceomatic no longer reads before `getenv("TERM")` while constructing the initial environment.
 - ARM64 synthetic non-null read-fault recovery remains compile-time gated by `ENABLE_ARM64_READ_FAULT_RECOVERY` and disabled in production builds.
 - Guest self-modifying/JIT-patched code invalidation, `CLREX`, `LDXR` widths, `LDPSW`, `DMB`/`DSB`/`ISB`, and per-thread `sigaltstack` are covered by runtime fixtures.
 - Host OS differences for sysinfo, thread rusage, fd path lookup, stat timestamp fields, random bytes, thread naming, and memory-pressure hooks are centralized through `platform/platform.h`.
 
 ## Rollback point
 
+- Roll back to `2074a6a4` if the exec/shebang/initial-argv audit tranche regresses production behavior.
 - Roll back to `c4f10affbc99b0038f45fa659730d669c5b10aa2` if the final logging/mount-option audit tranche regresses production behavior.
 - Roll back to `17d68ad6fbcedab918e883c1637f254f384c2a73` if the timed-wait cleanup tranche regresses production behavior.
 - Roll back to `b38c6239b08270889fc32a33c7095cf376785ba6` if the barrier-audit tranche regresses production behavior.

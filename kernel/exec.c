@@ -180,7 +180,11 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
             goto out_free_interp;
         }
 
-        interp_name = malloc(ph[i].filesize);
+        if (ph[i].filesize == 0 || ph[i].filesize > MAX_PATH) {
+            err = _ENAMETOOLONG;
+            goto out_free_interp;
+        }
+        interp_name = malloc(ph[i].filesize + 1);
         err = _ENOMEM;
         if (interp_name == NULL)
             goto out_free_ph;
@@ -189,8 +193,10 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
         err = _EIO;
         if (fd->ops->lseek(fd, ph[i].offset, SEEK_SET) < 0)
             goto out_free_interp;
-        if (fd->ops->read(fd, interp_name, ph[i].filesize) != ph[i].filesize)
+        ssize_t interp_read = fd->ops->read(fd, interp_name, ph[i].filesize);
+        if (interp_read < 0 || (uint64_t) interp_read != ph[i].filesize)
             goto out_free_interp;
+        interp_name[ph[i].filesize] = '\0';
 
         // open interpreter and read headers
         interp_fd = generic_open(interp_name, O_RDONLY, 0);
@@ -610,10 +616,11 @@ static int shebang_exec(struct fd *fd, const char *file, struct exec_args argv, 
     }
 
     char *argument = p;
-    // strip trailing whitespace
-    p = strchr(p, '\0') - 1;
-    while (*p == ' ')
-        *p-- = '\0';
+    // Strip trailing spaces from the optional interpreter argument without
+    // walking back into the interpreter string when no argument is present.
+    char *end = argument + strlen(argument);
+    while (end > argument && end[-1] == ' ')
+        *--end = '\0';
     if (*argument == '\0')
         argument = NULL;
 

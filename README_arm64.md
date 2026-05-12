@@ -300,8 +300,8 @@ to debug, not as cases to skip.
 
 Current Linux-host status from this pass:
 
-- Latest staged run: **28 / 28 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260512-065414.md`, `TIMEOUT_S=180`, `INSTALL_TIMEOUT_S=300`).
-- Production package baseline: [docs/ARM64_PRODUCTION_BASELINE.md](docs/ARM64_PRODUCTION_BASELINE.md) (`alpine-arm64-fakefs` on Alpine 3.23.4 with OpenJDK 21.0.10_p7-r0).
+- Latest staged run: **28 / 28 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260512-070511.md`, `TIMEOUT_S=180`, `INSTALL_TIMEOUT_S=300`).
+- Production package baseline: [docs/ARM64_PRODUCTION_BASELINE.md](docs/ARM64_PRODUCTION_BASELINE.md) (`alpine-arm64-fakefs` on Alpine 3.23.4 with OpenJDK 21.0.10_p7-r0; current audit tag `arm64-openjdk21-prod-20260510-r5`).
 - Non-trivial workload probes are grouped in [docs/ARM64_WORKLOAD_SMOKE_TESTS.md](docs/ARM64_WORKLOAD_SMOKE_TESTS.md): Bun/PiClaw, `rcarmo/go-gte`, and the Benchmarks Game rows.
 - C coverage is green: `gcc --version`, compile, and execute all pass.
 - SysV IPC coverage is green: shared memory and message queues work across `fork()`.
@@ -342,6 +342,7 @@ Current Linux-host status from this pass:
 - Gated ARM64 guest SIGSEGV stack/map dumps behind `ISH_TRACE_FAULTS` so runtimes that deliberately handle null/check traps (HotSpot included) no longer emit production noise by default.
 - Stopped advertising optional crypto/LSE features in `AT_HWCAP` until those helper sets are fully coverage-clean; runtimes can fall back to baseline FP/ASIMD paths.
 - Added `LDNP`/`STNP` handling by treating non-temporal pair loads/stores like ordinary no-writeback pair transfers. This removes the `0xa8007c3f` illegal-instruction trap seen in Bun TypeScript runs.
+- Hardened production-adjacent launch/logging paths during the final audit: bounded `printk`/`die`, exact mount-option token parsing, bounded initial argv construction, safe `PT_INTERP` loading, shebang optional-argument trimming, and safe ptraceomatic `TERM` environment construction.
 - Added ARM64 `preadv`/`pwritev` implementations and wired syscalls 69/70 to
   remove Node/npm fallback noise.
 - Reclassified the earlier `HIGHBITS pc=0xefec3698` noise as an invalid
