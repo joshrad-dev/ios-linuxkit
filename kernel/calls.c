@@ -680,7 +680,7 @@ void dump_maps(void) {
     extern void proc_maps_dump(struct task *task, struct proc_data *buf);
     struct proc_data buf = {};
     proc_maps_dump(current, &buf);
-    // go a line at a time because it can be fucking enormous
+    // Go a line at a time because /proc maps output can be very large.
     char *orig_data = buf.data;
     while (buf.size > 0) {
         size_t chunk_size = buf.size;

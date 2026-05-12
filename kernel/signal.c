@@ -352,7 +352,7 @@ static void setup_sigcontext(struct sigcontext_ *sc, struct cpu_state *cpu) {
     sc->trapno = cpu->trapno;
     if (cpu->trapno == INT_GPF)
         sc->cr2 = cpu->segfault_addr;
-    // TODO more shit
+    // Remaining legacy i386 sigcontext fields are left at zero.
     sc->oldmask = current->blocked & 0xffffffff;
 }
 #endif

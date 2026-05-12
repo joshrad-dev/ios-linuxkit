@@ -228,7 +228,7 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
     bool load_addr_set = false;
     addr_t bias = 0; // offset for loading shared libraries as executables
 
-    // map dat shit!
+    // Map loadable program segments.
     for (unsigned i = 0; i < header.phent_count; i++) {
         if (ph[i].type != PT_LOAD)
             continue;
@@ -267,7 +267,7 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
     addr_t interp_base = 0;
 
     if (interp_name) {
-        // map dat shit! interpreter edition
+        // Map the ELF interpreter segments.
         interp_base = find_hole_for_elf(&interp_header, interp_ph);
         for (int i = interp_header.phent_count - 1; i >= 0; i--) {
             if (interp_ph[i].type != PT_LOAD)

@@ -108,11 +108,23 @@ static void output_line(const char *line) {
 }
 
 void ish_vprintk(const char *msg, va_list args) {
-    // format the message
-    // I'm trusting you to not pass an absurdly long message
+    // Format into a per-thread line buffer. Keep incomplete trailing lines for
+    // the next call, but never let a long diagnostic overflow the buffer.
     static __thread char buf[16384] = "";
     static __thread size_t buf_size = 0;
-    buf_size += vsprintf(buf + buf_size, msg, args);
+    size_t remaining = sizeof(buf) - buf_size;
+    if (remaining == 0) {
+        buf_size = sizeof(buf) - 1;
+        buf[buf_size] = '\0';
+        remaining = 1;
+    }
+    int written = vsnprintf(buf + buf_size, remaining, msg, args);
+    if (written < 0)
+        return;
+    if ((size_t) written >= remaining)
+        buf_size = sizeof(buf) - 1;
+    else
+        buf_size += (size_t) written;
 
     // output up to the last newline, leave the rest in the buffer
     lock(&log_lock);
@@ -169,10 +181,10 @@ void die(const char *msg, ...) {
     va_list args;
     va_start(args, msg);
     char buf[4096];
-    vsprintf(buf, msg, args);
+    vsnprintf(buf, sizeof(buf), msg, args);
+    va_end(args);
     die_handler(buf);
     abort();
-    va_end(args);
 }
 
 // fun little utility function

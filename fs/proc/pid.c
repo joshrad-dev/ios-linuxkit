@@ -72,7 +72,7 @@ static int proc_pid_stat_show(struct proc_entry *entry, struct proc_data *buf) {
     proc_printf(buf, "%ld ", 0l); // rss
     proc_printf(buf, "%lu ", 0l); // rss limit
 
-    // bunch of shit that can only be accessed by a debugger
+    // Fields that require debugger-only/kernel-internal address details.
     proc_printf(buf, "%lu ", 0l); // startcode
     proc_printf(buf, "%lu ", 0l); // endcode
     proc_printf(buf, "%lu ", task->mm ? task->mm->stack_start : 0);

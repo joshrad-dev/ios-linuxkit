@@ -190,7 +190,7 @@ void path_rename(struct fakefs_db *fs, const char *src, const char *dst) {
 }
 
 #if DEBUG_sql
-static int trace_callback(unsigned UNUSED(why), void *UNUSED(fuck), void *stmt, void *_sql) {
+static int trace_callback(unsigned UNUSED(why), void *UNUSED(ctx), void *stmt, void *_sql) {
     char *sql = _sql;
     printk("%d sql trace: %s %s\n", current ? current->pid : -1, sqlite3_expanded_sql(stmt), sql[0] == '-' ? sql : "");
     return 0;

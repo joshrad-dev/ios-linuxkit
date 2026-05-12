@@ -145,4 +145,4 @@ Noisy ARM64 fault diagnostics (`page fault ...`, register dumps, block instructi
 
 ARM64 iSH now keeps guest barrier classes distinct at translation time: `DMB` emits a host `dmb`, `DSB` emits a host `dsb`, and `ISB` emits a host `isb`. Because the current decoder folds all CRm shareability/domain variants into one gadget per barrier class, the `DMB` and `DSB` gadgets use the strongest host `sy` domain so guest `SY`/`LD`/`ST` forms are not under-serialized.
 
-The staged runtime suite includes `arm64 barriers DMB/DSB/ISB`, which compiles and executes common barrier encodings (`dmb sy`, `dmb ish`, `dmb ishld`, `dmb ishst`, `dsb sy`, `dsb ish`, and `isb`) inside the guest. Latest staged coverage is `/workspace/tmp/ish-arm64-runtime-coverage-20260510-102148.md` with **28 / 28 passing**.
+The staged runtime suite includes `arm64 barriers DMB/DSB/ISB`, which compiles and executes common barrier encodings (`dmb sy`, `dmb ish`, `dmb ishld`, `dmb ishst`, `dsb sy`, `dsb ish`, and `isb`) inside the guest. Latest staged coverage is `/workspace/tmp/ish-arm64-runtime-coverage-20260512-065414.md` with **28 / 28 passing**.

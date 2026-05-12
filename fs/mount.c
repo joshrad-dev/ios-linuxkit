@@ -162,12 +162,16 @@ int do_umount(const char *point) {
     return mount_remove(mount);
 }
 
-// FIXME: this is shit
+// Parse a comma-separated mount option list for an exact flag token.
 bool mount_param_flag(const char *info, const char *flag) {
+    size_t flag_len = strlen(flag);
     while (*info != '\0') {
-        if (strncmp(info, flag, strlen(flag)) == 0)
+        size_t token_len = strcspn(info, ",");
+        if (token_len == flag_len && strncmp(info, flag, flag_len) == 0)
             return true;
-        info += strcspn(info, ",");
+        info += token_len;
+        if (*info == ',')
+            info++;
     }
     return false;
 }

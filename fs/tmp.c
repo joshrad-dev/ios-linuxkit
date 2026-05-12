@@ -241,7 +241,7 @@ static void tmpfs_unmount_tree(struct tmp_inode *tree) {
 #endif
 
 static int tmpfs_umount(struct mount *UNUSED(mount)) {
-    // big fat fuckin TODO
+    // TODO: free the tmpfs inode tree when unmounting.
     // struct tmp_inode *root = mount->data;
     // tmpfs_unmount_tree(root);
     TODO("tmpfs umount");

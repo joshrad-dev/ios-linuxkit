@@ -60,7 +60,7 @@ struct newstat {
 struct newstat64 {
     qword_t dev;
     dword_t _pad1;
-    dword_t fucked_ino;
+    dword_t ino_low;
     dword_t mode;
     dword_t nlink;
     dword_t uid;

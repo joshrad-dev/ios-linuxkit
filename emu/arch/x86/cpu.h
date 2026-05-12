@@ -154,7 +154,7 @@ struct cpu_state {
         };
     };
 
-    // TLS bullshit
+    // Emulated TLS segment state.
     word_t gs;
     addr_t tls_ptr;
 
