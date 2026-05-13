@@ -1196,12 +1196,17 @@ int_t sys_sendmsg(fd_t sock_fd, addr_t msghdr_addr, int_t flags) {
 
     struct scm *scm = NULL;
     char real_msg_control[CMSG_SPACE(sizeof(int))]; // only used if actually sending an fd
-    if (sock->socket.domain == AF_LOCAL_ && msg_control != NULL && msg_fake.msg_controllen >= sizeof(struct cmsghdr_)) {
+    if (sock->socket.domain == AF_LOCAL_ && msg_control != NULL && msg_fake.msg_controllen >= sizeof(struct cmsghdr_guest)) {
         // figure out how many file descriptors we're sending
         uint8_t *mhdr_end = msg_control + msg_fake.msg_controllen;
         unsigned num_fds = 0;
         struct cmsghdr_guest *cmsg;
         for (cmsg = (void *) msg_control; cmsg != NULL; cmsg = CMSG_NXTHDR_GUEST(cmsg, mhdr_end)) {
+            size_t remaining = (size_t)(mhdr_end - (uint8_t *)cmsg);
+            if (cmsg->len < sizeof(struct cmsghdr_guest) || cmsg->len > remaining) {
+                err = _EINVAL;
+                goto out_free_iov;
+            }
             if (cmsg->level != SOL_SOCKET_)
                 continue;
             if (cmsg->type != SCM_RIGHTS_) {
@@ -1240,6 +1245,11 @@ int_t sys_sendmsg(fd_t sock_fd, addr_t msghdr_addr, int_t flags) {
             scm->num_fds = 0;
             unsigned fd_i = 0;
             for (cmsg = (void *) msg_control; cmsg != NULL; cmsg = CMSG_NXTHDR_GUEST(cmsg, mhdr_end)) {
+                size_t remaining = (size_t)(mhdr_end - (uint8_t *)cmsg);
+                if (cmsg->len < sizeof(struct cmsghdr_guest) || cmsg->len > remaining) {
+                    err = _EINVAL;
+                    goto out_free_scm;
+                }
                 if (cmsg->level != SOL_SOCKET_)
                     continue;
                 fd_t *fds = (void *) cmsg->data;
@@ -1471,7 +1481,10 @@ int_t sys_recvmsg(fd_t sock_fd, addr_t msghdr_addr, int_t flags) {
         close(dummy_fd);
 
         lock(&sock->lock);
-        assert(!list_empty(&sock->socket.unix_scm));
+        if (list_empty(&sock->socket.unix_scm)) {
+            unlock(&sock->lock);
+            return _EINVAL;
+        }
         struct scm *scm = list_first_entry(&sock->socket.unix_scm, struct scm, queue);
         list_remove(&scm->queue);
         unlock(&sock->lock);

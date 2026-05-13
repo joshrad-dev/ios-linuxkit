@@ -47,7 +47,7 @@ Reviewed: 2026-05-13
 
 ## Validation artifacts
 
-- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260513-220623.md`
+- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260513-222929.md`
   - Result: 49 / 49 passing
   - Includes no-safety-valve/no-NETDIAG Rust Cargo/std coverage, Erlang helper-thread cleanup validation, UDP/TCP socket-option and `sendmsg`/`recvmsg`/`SCM_RIGHTS` ABI coverage, and Python/Lua/Java/Clojure/PyPy/Swift/Rust/Erlang/Zig smoke or availability coverage.
 - Go Benchmarks Game smoke: `/workspace/tmp/benchmarksgame-go-smoke-20260513-144802.md`
@@ -78,4 +78,4 @@ Reviewed: 2026-05-13
 ## Remaining known limitations
 
 - Non-production diagnostic compatibility for ARM64 read-fault recovery exists behind `ENABLE_ARM64_READ_FAULT_RECOVERY`; keep it disabled unless explicitly debugging.
-- Native offload and socket/poll implementations still contain host-specific implementation branches outside `platform/platform.h`; the second socket audit hardened Unix socket backing paths, accept/name buffers, send/receive buffer allocation, ARM64 control-message layout, socket-option buffers, and bind-failure cleanup, but broader host-specific socket/poll cleanup remains a future candidate.
+- Native offload and socket/poll implementations still contain host-specific implementation branches outside `platform/platform.h`; the second socket audit hardened Unix socket backing paths, accept/name buffers, send/receive buffer allocation, ARM64 control-message layout/validation, socket-option buffers, and bind-failure cleanup, but broader host-specific socket/poll cleanup remains a future candidate.
