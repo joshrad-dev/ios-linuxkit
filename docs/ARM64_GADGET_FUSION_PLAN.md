@@ -29,10 +29,26 @@ This gives a stable before/after signal for dispatch, memory translation, filesy
 
 ## Phase 1: safe gadget-fusion cleanup
 
-Start by extending existing peephole infrastructure rather than introducing a new IR:
+Start by extending existing peephole infrastructure rather than introducing a new IR.
 
-1. Inventory current fusion hit opportunities with disassembly/trace counters.
-2. Add optional counters for generated fused patterns vs fallback gadgets.
+Optional generation counters are enabled with:
+
+```sh
+ISH_ARM64_FUSION_STATS=1 ./build-arm64-linux/ish -f alpine-arm64-fakefs /bin/sh -lc 'node --version'
+```
+
+They are silent by default and print one line per one-shot emulator process, for example:
+
+```text
+ARM64_FUSION_STATS cmp_bcond=5532 subs_bcond=92 adrp_add=2636 adrp_ldr64=1638 addsub_fast=21941
+```
+
+The first counter-enabled Node/Bun perf-table run is `/workspace/tmp/ish-arm64-node-bun-perf-20260515-214650.md` with **10 / 10 passing**. The hottest current categories are existing `CMP + B.cond` fusion and specialized add/sub fast paths, especially in Node eval/JSON rows.
+
+Next steps:
+
+1. Use the generation counters to inventory current fusion hit opportunities.
+2. Add more granular counters where needed before selecting a new fused gadget.
 3. Prefer pure register/control fusions first:
    - `ADRP+ADD` variants not already covered;
    - compare/test + branch gaps;

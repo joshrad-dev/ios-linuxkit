@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include "asbestos/gen.h"
 #include "emu/arch/arm64/decode.h"
 #include "emu/interrupt.h"
@@ -34,6 +35,37 @@ extern void gadget_set_pc(void);
 extern void gadget_set_jit_saved_pc(void);
 extern void gadget_trace(void);
 extern void gadget_check_highbits(void);
+
+static bool arm64_fusion_stats_enabled;
+static uint64_t arm64_fusion_cmp_bcond_count;
+static uint64_t arm64_fusion_subs_bcond_count;
+static uint64_t arm64_fusion_adrp_add_count;
+static uint64_t arm64_fusion_adrp_ldr64_count;
+static uint64_t arm64_fusion_addsub_fast_count;
+static bool arm64_fusion_stats_dumped;
+
+void arm64_fusion_stats_dump_if_enabled(void) {
+    if (!arm64_fusion_stats_enabled || arm64_fusion_stats_dumped)
+        return;
+    arm64_fusion_stats_dumped = true;
+    fprintf(stderr,
+            "ARM64_FUSION_STATS cmp_bcond=%llu subs_bcond=%llu adrp_add=%llu adrp_ldr64=%llu addsub_fast=%llu\n",
+            (unsigned long long)arm64_fusion_cmp_bcond_count,
+            (unsigned long long)arm64_fusion_subs_bcond_count,
+            (unsigned long long)arm64_fusion_adrp_add_count,
+            (unsigned long long)arm64_fusion_adrp_ldr64_count,
+            (unsigned long long)arm64_fusion_addsub_fast_count);
+    fflush(stderr);
+}
+
+void arm64_fusion_stats_set_enabled_from_env(const char *env) {
+    arm64_fusion_stats_enabled = env != NULL && env[0] != '\0' && strcmp(env, "0") != 0;
+}
+
+#define ARM64_FUSION_STAT_INC(counter) do { \
+    if (arm64_fusion_stats_enabled) \
+        (counter)++; \
+} while (0)
 
 // Data processing gadgets
 extern void gadget_load_reg(void);
@@ -1218,10 +1250,12 @@ static int try_fuse_subs_bcond(struct gen_state *state, uint32_t sf, uint32_t rd
 
     if (rd == 31) {
         // CMP: no result register, only flags
+        ARM64_FUSION_STAT_INC(arm64_fusion_cmp_bcond_count);
         gen(state, (unsigned long)(sf ? fused_cmp_bcond_gadgets[cond] : fused_cmp32_bcond_gadgets[cond]));
         gen(state, rn | ((uint64_t)imm12 << 8));
     } else {
         // SUBS: result register + flags
+        ARM64_FUSION_STAT_INC(arm64_fusion_subs_bcond_count);
         gen(state, (unsigned long)(sf ? fused_subs_bcond_gadgets[cond] : fused_subs32_bcond_gadgets[cond]));
         gen(state, rd | (rn << 8) | ((uint64_t)imm12 << 16));
     }
@@ -1258,10 +1292,12 @@ static int try_fuse_subs_reg_bcond(struct gen_state *state, uint32_t rd, uint32_
 
     if (rd == 31) {
         // CMP reg: no result, only flags
+        ARM64_FUSION_STAT_INC(arm64_fusion_cmp_bcond_count);
         gen(state, (unsigned long)fused_cmp_reg_bcond_gadgets[cond]);
         gen(state, rn | (rm << 8));
     } else {
         // SUBS reg: result + flags
+        ARM64_FUSION_STAT_INC(arm64_fusion_subs_bcond_count);
         gen(state, (unsigned long)fused_subs_reg_bcond_gadgets[cond]);
         gen(state, rd | (rn << 8) | (rm << 16));
     }
@@ -1306,6 +1342,7 @@ static int gen_dp_imm(struct gen_state *state, uint32_t insn) {
                         // Param 1: ldr_rt[0:4] | rd[5:9] | ldr_offset[16:31]
                         // Param 2: adrp_target (32-bit, zero-extended)
                         state->ip += 4;
+                        ARM64_FUSION_STAT_INC(arm64_fusion_adrp_ldr64_count);
                         gen(state, (unsigned long) gadget_fused_adrp_ldr64);
                         gen(state, ldr_rt | ((uint64_t)rd << 5) | ((uint64_t)ldr_offset << 16));
                         gen(state, target & 0xffffffffffffULL);
@@ -1320,6 +1357,7 @@ static int gen_dp_imm(struct gen_state *state, uint32_t insn) {
                     uint32_t add_imm12 = (next >> 10) & 0xfff;
                     if (add_rn == rd && add_rd == rd) {
                         state->ip += 4;
+                        ARM64_FUSION_STAT_INC(arm64_fusion_adrp_add_count);
                         gen(state, (unsigned long) gadget_fused_adrp_add);
                         gen(state, rd | ((uint64_t)add_imm12 << 8));
                         gen(state, target & 0xffffffffffffULL);
@@ -1361,24 +1399,28 @@ static int gen_dp_imm(struct gen_state *state, uint32_t insn) {
         bool can_specialize_imm_sh = sf && sh && rn != 31;
         if (can_specialize_imm && S) {
             // ADDS/SUBS imm 64-bit (rd=31 allowed for CMP/CMN)
+            ARM64_FUSION_STAT_INC(arm64_fusion_addsub_fast_count);
             gen(state, (unsigned long)(op ? gadget_subs_imm_64 : gadget_adds_imm_64));
             gen(state, rd | (rn << 8) | ((uint64_t)imm12 << 16));
             return 1;
         }
         if (can_specialize_imm_sh && S) {
             // ADDS/SUBS imm 64-bit with LSL#12 (rd=31 allowed for CMP/CMN)
+            ARM64_FUSION_STAT_INC(arm64_fusion_addsub_fast_count);
             gen(state, (unsigned long)(op ? gadget_subs_imm_64_sh : gadget_adds_imm_64_sh));
             gen(state, rd | (rn << 8) | ((uint64_t)imm12 << 16));
             return 1;
         }
         if (can_specialize_imm && !S && rd != 31) {
             // ADD/SUB imm 64-bit, no flags, no SP
+            ARM64_FUSION_STAT_INC(arm64_fusion_addsub_fast_count);
             gen(state, (unsigned long)(op ? gadget_sub_imm_64 : gadget_add_imm_64));
             gen(state, rd | (rn << 8) | ((uint64_t)imm12 << 16));
             return 1;
         }
         if (can_specialize_imm_sh && !S && rd != 31) {
             // ADD/SUB imm 64-bit with LSL#12, no flags, no SP
+            ARM64_FUSION_STAT_INC(arm64_fusion_addsub_fast_count);
             gen(state, (unsigned long)(op ? gadget_sub_imm_64_sh : gadget_add_imm_64_sh));
             gen(state, rd | (rn << 8) | ((uint64_t)imm12 << 16));
             return 1;
@@ -1388,12 +1430,14 @@ static int gen_dp_imm(struct gen_state *state, uint32_t insn) {
         bool can_specialize_32 = !sf && !sh && rn != 31;
         if (can_specialize_32 && S) {
             // ADDS/SUBS imm 32-bit (rd=31 allowed for CMP/CMN)
+            ARM64_FUSION_STAT_INC(arm64_fusion_addsub_fast_count);
             gen(state, (unsigned long)(op ? gadget_subs_imm_32 : gadget_adds_imm_32));
             gen(state, rd | (rn << 8) | ((uint64_t)imm12 << 16));
             return 1;
         }
         if (can_specialize_32 && !S && rd != 31) {
             // ADD/SUB imm 32-bit, no flags, no SP
+            ARM64_FUSION_STAT_INC(arm64_fusion_addsub_fast_count);
             gen(state, (unsigned long)(op ? gadget_sub_imm_32 : gadget_add_imm_32));
             gen(state, rd | (rn << 8) | ((uint64_t)imm12 << 16));
             return 1;
@@ -1401,6 +1445,7 @@ static int gen_dp_imm(struct gen_state *state, uint32_t insn) {
 
         // SP-source specialization: ADD/SUB Xd, SP, #imm (sf=1, S=0, sh=0, rn==31, rd!=31)
         if (sf && !sh && rn == 31 && !S && rd != 31) {
+            ARM64_FUSION_STAT_INC(arm64_fusion_addsub_fast_count);
             gen(state, (unsigned long)(op ? gadget_sub_imm_sp_src_64 : gadget_add_imm_sp_src_64));
             gen(state, rd | ((uint64_t)imm12 << 16));
             return 1;
@@ -3340,11 +3385,13 @@ static int gen_dp_reg(struct gen_state *state, uint32_t insn) {
             if (fused == 0) return 0;
         }
         if (can_spec_reg && S) {
+            ARM64_FUSION_STAT_INC(arm64_fusion_addsub_fast_count);
             gen(state, (unsigned long)(op ? gadget_subs_reg_64_nshift : gadget_adds_reg_64_nshift));
             gen(state, rd | (rn << 8) | (rm << 16));
             return 1;
         }
         if (can_spec_reg && !S && rd != 31) {
+            ARM64_FUSION_STAT_INC(arm64_fusion_addsub_fast_count);
             gen(state, (unsigned long)(op ? gadget_sub_reg_64_nshift : gadget_add_reg_64_nshift));
             gen(state, rd | (rn << 8) | (rm << 16));
             return 1;
