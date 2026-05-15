@@ -8,7 +8,7 @@ The upstream/original README is preserved as [ORIGINAL_README.md](ORIGINAL_READM
 
 Latest staged runtime report: **49 / 49 passing**
 
-- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260515-100925.md`
+- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260515-123037.md`
 - Binary: `build-arm64-linux/ish`
 - Rootfs: `alpine-arm64-fakefs`
 - Timeout: `TIMEOUT_S=180`
@@ -16,7 +16,7 @@ Latest staged runtime report: **49 / 49 passing**
 - `SAFETY-VALVE` diagnostics in report: **0**
 - `NETDIAG` diagnostics in report: **0**
 
-AI CLI runtime coverage is tracked as a separate second-stage suite because it installs fast-moving agent packages and should not contaminate the stable 49-test core gate. Latest Alpine npm-only report: **14 / 14 passing** at `/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-090603.md`. The Claude Code standalone Bun binary crash was traced to high-address `MAP_NORESERVE` reservation overlap; high-hole allocation is now reservation-aware. Debian AI CLI remains a background lane while glibc thread creation is still blocked by `pthread_create()`/libuv assertions.
+AI CLI runtime coverage is tracked as a separate second-stage suite because it installs fast-moving agent packages and should not contaminate the stable 49-test core gate. Latest Alpine npm-only report: **14 / 14 passing** at `/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-124024.md`. The Claude Code standalone Bun binary crash was traced to high-address `MAP_NORESERVE` reservation overlap; high-hole allocation and alignment are now reservation-aware. Debian AI CLI remains a background lane while glibc thread creation is still blocked by `pthread_create()`/libuv assertions.
 
 This README reflects the validation sequence after tagged point `arm64-openjdk21-prod-20260513-r6`, including the later Rust/Cargo and socket ABI audit fixes, lane-aware runtime coverage, and the separate AI CLI coverage harness.
 
@@ -144,8 +144,8 @@ The runtime gate and workload smokes cover the fixes that made the ARM64 guest p
 - JSC compatibility shims: `JSC_numberOfGCMarkers=1`, `JSC_useConcurrentGC=0`
 - ARM64 signal ABI fixes (`siginfo_t`, `SI_TKILL`, correct syscall 240 handling)
 - `getdents64` directory-entry type reporting
-- ARM64 `preadv`/`pwritev` syscall wiring
-- high 48-bit mmap hints and high anonymous `MAP_NORESERVE` arenas
+- ARM64 `preadv`/`pwritev` and `fchmodat2(AT_EMPTY_PATH)` syscall wiring
+- high 48-bit mmap hints and high anonymous `MAP_NORESERVE` arenas, including reservation-safe high-hole alignment
 - lazy `MAP_NORESERVE` permission updates on `mprotect()`
 - LDXP/STLXP, CASP, CLREX, LDXR width, LDPSW, FP16 conversion, barrier, and self-modifying-code fixes
 - bounded logging/launch/shebang/`PT_INTERP` handling

@@ -1166,6 +1166,8 @@ static dword_t do_fchmodat(fd_t at_f, addr_t path_addr, dword_t mode, dword_t fl
         return _EINVAL;
     mode &= ~S_IFMT;
     if ((flags & AT_EMPTY_PATH_) && path[0] == '\0') {
+        if (at_f == AT_FDCWD_)
+            return generic_setattrat(AT_PWD, ".", make_attr(mode, mode), true);
         struct fd *fd = f_get(at_f);
         if (fd == NULL)
             return _EBADF;

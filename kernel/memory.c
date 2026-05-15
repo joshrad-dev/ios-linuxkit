@@ -308,16 +308,24 @@ void mem_next_page(struct mem *mem, page_t *page) {
     }
 }
 
-// Scan downward from 'start' to MMAP_HOLE_END, skipping unallocated page table
-// subtrees for efficiency (L0 covers 2^27 pages, L1 2^18, L2 2^9).
-static bool hole_overlaps_reservation(struct mem *mem, page_t start, pages_t size) {
+bool mem_range_has_reservation(struct mem *mem, page_t start, pages_t size) {
+    if (size == 0)
+        return false;
+    page_t end = start + size;
+    if (end <= start)
+        return true;
     for (struct mem_reservation *r = mem->reservations; r; r = r->next) {
-        if (r->start < start + size && r->start + r->pages > start)
+        if (r->pages == 0)
+            continue;
+        page_t r_end = r->start + r->pages;
+        if (r_end <= r->start || (r->start < end && r_end > start))
             return true;
     }
     return false;
 }
 
+// Scan downward from 'start' to MMAP_HOLE_END, skipping unallocated page table
+// subtrees for efficiency (L0 covers 2^27 pages, L1 2^18, L2 2^9).
 static page_t pt_find_hole_from(struct mem *mem, pages_t size, page_t start) {
     struct pt_node *l0 = mem->pgdir;
     page_t hole_end = 0;
@@ -448,7 +456,7 @@ page_t pt_find_hole(struct mem *mem, pages_t size) {
         page_t result = pt_find_hole_from(mem, size, start);
         if (result == BAD_PAGE)
             break;
-        if (!hole_overlaps_reservation(mem, result, size)) {
+        if (!mem_range_has_reservation(mem, result, size)) {
             mem->mmap_hint = (result > 0) ? result - 1 : 0;
             return result;
         }
@@ -468,7 +476,7 @@ page_t pt_find_hole(struct mem *mem, pages_t size) {
             page_t result = pt_find_hole_from(mem, size, start);
             if (result == BAD_PAGE)
                 break;
-            if (!hole_overlaps_reservation(mem, result, size)) {
+            if (!mem_range_has_reservation(mem, result, size)) {
                 mem->mmap_hint = (result > 0) ? result - 1 : 0;
                 return result;
             }
@@ -483,7 +491,7 @@ page_t pt_find_hole(struct mem *mem, pages_t size) {
 
     // Low 4GB exhausted — try high address space (above 4GB).
     page_t result = pt_find_hole_high(mem, size);
-    if (result != BAD_PAGE && !hole_overlaps_reservation(mem, result, size))
+    if (result != BAD_PAGE && !mem_range_has_reservation(mem, result, size))
         return result;
 
     return BAD_PAGE;
