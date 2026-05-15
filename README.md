@@ -2,7 +2,7 @@
 
 This repository is an ARM64 bring-up fork of [iSH](https://ish.app/) focused on making an AArch64 Linux guest practical enough to run modern language runtimes, compilers, package managers, and real workload smoke tests on ARM64 hosts.
 
-The upstream/original README is preserved as [ORIGINAL_README.md](ORIGINAL_README.md). Deeper ARM64 implementation notes are in [README_arm64.md](README_arm64.md), and workload status is tracked in [docs/ARM64_WORKLOAD_SMOKE_TESTS.md](docs/ARM64_WORKLOAD_SMOKE_TESTS.md).
+The upstream/original README is preserved as [ORIGINAL_README.md](ORIGINAL_README.md). Deeper ARM64 implementation notes are in [README_arm64.md](README_arm64.md), workload status is tracked in [docs/ARM64_WORKLOAD_SMOKE_TESTS.md](docs/ARM64_WORKLOAD_SMOKE_TESTS.md), and the executor speedup roadmap is tracked in [docs/ARM64_GADGET_FUSION_PLAN.md](docs/ARM64_GADGET_FUSION_PLAN.md).
 
 ## Current validation baseline
 
@@ -32,6 +32,12 @@ Run the staged runtime coverage gate (defaults to all configured lanes; use `ROO
 
 ```bash
 make test-arm64-runtime-coverage REPORT_DIR=/workspace/tmp TIMEOUT_S=180 INSTALL_TIMEOUT_S=300
+```
+
+Run the focused Node/Bun perf table before and after executor optimization work. Latest baseline: **10 / 10 passing** at `/workspace/tmp/ish-arm64-node-bun-perf-20260515-213520.md`.
+
+```bash
+make test-arm64-node-bun-perf ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=180
 ```
 
 Run the separate AI CLI coverage suite:

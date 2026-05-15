@@ -101,6 +101,15 @@ test-arm64-runtime-coverage-debug: build-arm64-linux-debug $(DEBIAN_ROOTFS_DIR)
 	INSTALL_TIMEOUT_S="$(INSTALL_TIMEOUT_S)" \
 	./tests/arm64/runtime-coverage.sh
 
+.PHONY: test-arm64-node-bun-perf
+test-arm64-node-bun-perf: build-arm64-linux
+	ISH_BIN="$(CURDIR)/$(RELEASE_BUILD_DIR)/ish" \
+	ROOTFS="$(ROOTFS_DIR)" \
+	ROOTFS_LANES="$(ROOTFS_LANES)" \
+	REPORT_DIR="$(REPORT_DIR)" \
+	TIMEOUT_S="$(TIMEOUT_S)" \
+	./tests/arm64/node-bun-perf-table.sh
+
 .PHONY: test-arm64-ai-cli-runtime-coverage
 test-arm64-ai-cli-runtime-coverage: build-arm64-linux $(DEBIAN_ROOTFS_DIR)
 	ISH_BIN="$(CURDIR)/$(RELEASE_BUILD_DIR)/ish" \
