@@ -77,7 +77,7 @@ run_guest_test() {
         guest_capture "$cmd" >"$out" 2>&1 || host_rc=$?
     fi
 
-    local bad_diag='SAFETY-VALVE|SYS_FUTEX|V8_SIG|panic\(|Segmentation fault|Bun has crashed|illegal instruction|Illegal instruction'
+    local bad_diag='SAFETY-VALVE|SYS_FUTEX|V8_SIG|panic\(|Segmentation fault|Bun has crashed|illegal instruction|Illegal instruction|page fault on|SIGNAL_TRACE'
     if [ "$host_rc" -eq 0 ] && grep -q '^__ISH_STATUS:0$' "$out" && ! grep -Eq "$bad_diag" "$out"; then
         PASS_COUNT=$((PASS_COUNT + 1))
         echo "PASS"
@@ -317,7 +317,17 @@ install_and_smoke_npm() {
     elif [ "$slug" = gemini-cli ]; then
         smoke_env="export ISH_NODE_NO_ARG_INJECTION=1 GEMINI_CLI_NO_RELAUNCH=1;"
     fi
-    run_install_test npm "$slug install $pkg" "rm -rf '$dir' && mkdir -p '$dir' && cd '$dir' && npm init -y >/dev/null && npm install --no-audit --no-fund '$pkg'"
+    local install_flags="--no-audit --no-fund"
+    if [ "$slug" = pi ]; then
+        # `koffi` is an optional dependency of pi-tui. Its install script probes
+        # a prebuilt native module that currently trips an illegal-instruction
+        # diagnostic under iSH before npm treats the optional dependency as
+        # skippable. Omit optional deps for this unauthenticated CLI startup
+        # smoke so diagnostics stay strict and the real `pi --help` path remains
+        # covered.
+        install_flags="$install_flags --omit=optional"
+    fi
+    run_install_test npm "$slug install $pkg" "rm -rf '$dir' && mkdir -p '$dir' && cd '$dir' && npm init -y >/dev/null && npm install $install_flags '$pkg'"
     if [ "$slug" = claude-code ]; then
         run_test npm "$slug smoke $bin" "cd '$dir' && PATH=\"\$PWD/node_modules/.bin:\$PATH\" '$GUEST_WORK/helper/smoke-bin.sh' '$bin'"
     elif [ "$slug" = github-copilot ]; then

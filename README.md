@@ -8,7 +8,7 @@ The upstream/original README is preserved as [ORIGINAL_README.md](ORIGINAL_READM
 
 Latest staged runtime report: **49 / 49 passing**
 
-- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260513-222929.md`
+- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260515-064845.md`
 - Binary: `build-arm64-linux/ish`
 - Rootfs: `alpine-arm64-fakefs`
 - Timeout: `TIMEOUT_S=180`
@@ -16,7 +16,9 @@ Latest staged runtime report: **49 / 49 passing**
 - `SAFETY-VALVE` diagnostics in report: **0**
 - `NETDIAG` diagnostics in report: **0**
 
-This README reflects the validation sequence after tagged point `arm64-openjdk21-prod-20260513-r6`, including the later Rust/Cargo and socket ABI audit fixes through `80ac6966` and the documentation refresh that followed.
+AI CLI runtime coverage is tracked as a separate second-stage suite because it installs fast-moving agent packages and should not contaminate the stable 49-test core gate. Latest Alpine npm-only report: **13 / 14 passing** at `/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-055241.md`; the remaining Alpine failure is Claude Code's standalone Bun binary startup instability (`V8_SIGABRT` or Bun segfault during `--version`/`--help`). Debian AI CLI remains a background lane while glibc thread creation is still blocked by `pthread_create()`/libuv assertions.
+
+This README reflects the validation sequence after tagged point `arm64-openjdk21-prod-20260513-r6`, including the later Rust/Cargo and socket ABI audit fixes, lane-aware runtime coverage, and the separate AI CLI coverage harness.
 
 ## Quick start
 
@@ -26,10 +28,16 @@ Build both Linux ARM64 variants:
 make build-arm64-linux-all
 ```
 
-Run the staged runtime coverage gate:
+Run the staged runtime coverage gate (defaults to all configured lanes; use `ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs` for the current Alpine-only baseline):
 
 ```bash
 make test-arm64-runtime-coverage REPORT_DIR=/workspace/tmp TIMEOUT_S=180 INSTALL_TIMEOUT_S=300
+```
+
+Run the separate AI CLI coverage suite:
+
+```bash
+make test-arm64-ai-cli-npm-runtime-coverage ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=180 INSTALL_TIMEOUT_S=1800
 ```
 
 Useful overrides:
@@ -43,7 +51,7 @@ INSTALL_TIMEOUT_S=300 \
 ./tests/arm64/runtime-coverage.sh
 ```
 
-A passing run writes `ish-arm64-runtime-coverage-YYYYMMDD-HHMMSS.md` under `REPORT_DIR`. The suite is intentionally strict: a test is not considered passing if it has to be force-killed or if `SAFETY-VALVE` diagnostics appear in captured output.
+A passing core run writes `ish-arm64-runtime-coverage-YYYYMMDD-HHMMSS.md` under `REPORT_DIR`. The suite is intentionally strict: a test is not considered passing if it has to be force-killed or if `SAFETY-VALVE` diagnostics appear in captured output. The AI CLI suite writes `ish-arm64-ai-cli-runtime-coverage-YYYYMMDD-HHMMSS.md` and is stricter about runtime diagnostics (`SAFETY-VALVE`, futex noise, V8/Bun crashes, page faults, and illegal-instruction traces all fail the row even when a package manager exits zero).
 
 ## Runtime coverage gate
 

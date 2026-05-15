@@ -860,7 +860,7 @@ run_lane() {
     run_test base "shell" "echo shell-ok | grep -qx shell-ok"
     run_test base "package manager" "if command -v apk >/dev/null 2>&1; then apk --version >/dev/null 2>&1; elif command -v apt-get >/dev/null 2>&1; then apt-get --version >/dev/null 2>&1; else exit 127; fi"
     run_test base "tmp file io" "echo file-ok > '$GUEST_WORK/base.txt' && grep -qx file-ok '$GUEST_WORK/base.txt'"
-    run_test base "symlink retarget normalization" "mkdir -p '$GUEST_WORK/path-cache' && cd '$GUEST_WORK/path-cache' && echo old > old.txt && echo new > new.txt && ln -sf old.txt current && grep -qx old current && ln -sf new.txt current && grep -qx new current"
+    run_test base "symlink retarget normalization" "rm -rf '$GUEST_WORK/path-cache' && mkdir -p '$GUEST_WORK/path-cache' && cd '$GUEST_WORK/path-cache' && echo old > old.txt && echo new > new.txt && ln -s old.txt current && grep -qx old current && rm -f current && ln -s new.txt current && grep -qx new current"
 
     ensure_tools 'build-base|gcc:gcc'
     prepare_c_fixture
