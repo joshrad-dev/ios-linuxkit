@@ -19,7 +19,7 @@ A workload belongs here when it exercises at least one of these boundaries:
 
 | Workload | Current status | Why it was chosen | Latest useful log/report |
 |---|---:|---|---|
-| Staged runtime coverage | Passing, 49/49 on Alpine | Fast regression gate for shell, `apk`, tmp I/O, C, SysV IPC, high-value syscall gap, UDP/TCP socket-option, and `sendmsg`/`recvmsg`/`SCM_RIGHTS` coverage, ARM64 DC ZVA coverage, ARM64 signal-ucontext and per-thread `sigaltstack` coverage, ARM64 CCMP/CCMN NV-condition coverage, ARM64 DMB/DSB/ISB barrier coverage, ARM64 self-modifying-code invalidation coverage, Go, Bun, Node/npm, Python, Lua, Java, Clojure, PyPy/Swift availability probes, Rust, Erlang, and Zig. Catches broad syscall/runtime regressions before heavier probes. | `/workspace/tmp/ish-arm64-runtime-coverage-20260515-093009.md` |
+| Staged runtime coverage | Passing, 49/49 on Alpine | Fast regression gate for shell, `apk`, tmp I/O, C, SysV IPC, high-value syscall gap, UDP/TCP socket-option, and `sendmsg`/`recvmsg`/`SCM_RIGHTS` coverage, ARM64 DC ZVA coverage, ARM64 signal-ucontext and per-thread `sigaltstack` coverage, ARM64 CCMP/CCMN NV-condition coverage, ARM64 DMB/DSB/ISB barrier coverage, ARM64 self-modifying-code invalidation coverage, Go, Bun, Node/npm, Python, Lua, Java, Clojure, PyPy/Swift availability probes, Rust, Erlang, and Zig. Catches broad syscall/runtime regressions before heavier probes. | `/workspace/tmp/ish-arm64-runtime-coverage-20260515-100925.md` |
 | AI CLI runtime coverage | Experimental, Alpine npm lane 14/14 | Separate second-stage matrix for unauthenticated install/startup/version/help probes of Claude Code, OpenAI Codex, Pi, GitHub Copilot, OpenCode, Gemini CLI, and pip-only Mistral Vibe. Kept separate from the core gate because packages are fast-moving and may expose runtime-specific crashes. | `/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-090603.md` |
 | Bun + PiClaw bootstrap/server | Passing for install/start/web listen | Exercises modern JS runtime behavior: high `mmap` reservations, JSC GC signaling/timers, recursive package/workspace copies, sockets, HTTP serving, and PiClaw's startup probes. | `/workspace/tmp/piclaw-yolo-run-enotsup-fixed.log` and exposed server logs |
 | `rcarmo/go-gte` | Model conversion, `go test ./...`, and `make run-go` passing; `make go-build` still has upstream missing `cmd/test_gte` | Exercises Go toolchain, Python wheels, safetensors/numpy model conversion, 128 MB binary model I/O, FP16→FP32 AdvSIMD conversion, NEON math kernels, and Go runtime scheduling. | `docs/GO_GTE_PROGRESS.md`, `/workspace/tmp/go-gte-smoke-20260513-1500.log` |
@@ -37,7 +37,7 @@ Latest result:
 
 ```text
 49 / 49 passing
-report: /workspace/tmp/ish-arm64-runtime-coverage-20260515-093009.md
+report: /workspace/tmp/ish-arm64-runtime-coverage-20260515-100925.md
 ```
 
 Why it matters:

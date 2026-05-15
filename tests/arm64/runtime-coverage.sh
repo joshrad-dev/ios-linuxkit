@@ -217,6 +217,7 @@ EOF
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/sem.h>
 #include <sys/signalfd.h>
@@ -225,12 +226,18 @@ EOF
 #include <sys/wait.h>
 #include <unistd.h>
 #include <linux/openat2.h>
+#ifndef SYS_fchmodat2
+#define SYS_fchmodat2 452
+#endif
+#ifndef AT_EMPTY_PATH
+#define AT_EMPTY_PATH 0x1000
+#endif
 
 union semun { int val; struct semid_ds *buf; unsigned short *array; };
 static void die(const char *s){perror(s); exit(1);}
 int main(){
  int fd=syscall(SYS_memfd_create,"gap",MFD_CLOEXEC); if(fd<0) die("memfd_create"); write(fd,"abc",3); char b[8]={0}; struct iovec iov={b,3}; if(syscall(SYS_preadv2,fd,&iov,1,0,0)!=3) die("preadv2"); if(strcmp(b,"abc")) return 2; struct iovec wiov={(char*)"Z",1}; if(syscall(SYS_pwritev2,fd,&wiov,1,1,0)!=1) die("pwritev2"); memset(b,0,8); pread(fd,b,3,0); if(strcmp(b,"aZc")) return 3;
- struct open_how how={.flags=O_RDONLY}; int ofd=syscall(SYS_openat2,AT_FDCWD,"/tmp/gap-openat2",&how,sizeof(how)); if(ofd>=0) close(ofd); int cfd=open("/tmp/gap-openat2",O_CREAT|O_RDWR,0600); if(cfd<0) die("create"); close(cfd); ofd=syscall(SYS_openat2,AT_FDCWD,"/tmp/gap-openat2",&how,sizeof(how)); if(ofd<0) die("openat2"); close(ofd); if(syscall(SYS_faccessat2,AT_FDCWD,"/tmp/gap-openat2",R_OK,0)<0) die("faccessat2");
+ struct open_how how={.flags=O_RDONLY}; int ofd=syscall(SYS_openat2,AT_FDCWD,"/tmp/gap-openat2",&how,sizeof(how)); if(ofd>=0) close(ofd); int cfd=open("/tmp/gap-openat2",O_CREAT|O_RDWR,0600); if(cfd<0) die("create"); close(cfd); ofd=syscall(SYS_openat2,AT_FDCWD,"/tmp/gap-openat2",&how,sizeof(how)); if(ofd<0) die("openat2"); close(ofd); if(syscall(SYS_faccessat2,AT_FDCWD,"/tmp/gap-openat2",R_OK,0)<0) die("faccessat2"); cfd=open("/tmp/gap-openat2",O_RDWR); if(cfd<0) die("open fchmodat2"); if(syscall(SYS_fchmodat2,cfd,"",0644,AT_EMPTY_PATH)<0) die("fchmodat2 empty"); struct stat fst; if(stat("/tmp/gap-openat2",&fst)<0||(fst.st_mode&0777)!=0644) die("fchmodat2 mode"); close(cfd);
  sigset_t mask; sigemptyset(&mask); sigaddset(&mask,SIGUSR1); if(sigprocmask(SIG_BLOCK,&mask,NULL)<0) die("sigprocmask"); int sfd=signalfd(-1,&mask,SFD_CLOEXEC|SFD_NONBLOCK); if(sfd<0) die("signalfd"); kill(getpid(),SIGUSR1); struct signalfd_siginfo si; ssize_t sr; for(int i=0;i<100;i++){ sr=read(sfd,&si,sizeof(si)); if(sr==sizeof(si)) break; usleep(1000);} if(sr!=sizeof(si)||si.ssi_signo!=SIGUSR1) die("read signalfd"); close(sfd);
  int sem=semget(IPC_PRIVATE,1,IPC_CREAT|0600); if(sem<0) die("semget"); union semun u; u.val=1; if(semctl(sem,0,SETVAL,u)<0) die("semctl set"); struct sembuf ops[1]={{0,-1,0}}; if(semop(sem,ops,1)<0) die("semop -1"); if(semctl(sem,0,GETVAL,u)!=0) die("semctl get"); semctl(sem,0,IPC_RMID,u);
  struct mq_attr attr={.mq_maxmsg=4,.mq_msgsize=32}; mqd_t mq=mq_open("/gapmq",O_CREAT|O_RDWR|O_NONBLOCK,0600,&attr); if(mq==(mqd_t)-1) die("mq_open"); if(mq_send(mq,"hello",6,7)<0) die("mq_send"); unsigned pr=0; char mbuf[32]; ssize_t mr=mq_receive(mq,mbuf,sizeof(mbuf),&pr); if(mr!=6||strcmp(mbuf,"hello")||pr!=7) die("mq_receive"); mq_close(mq); mq_unlink("/gapmq");

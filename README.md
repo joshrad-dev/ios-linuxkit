@@ -8,7 +8,7 @@ The upstream/original README is preserved as [ORIGINAL_README.md](ORIGINAL_READM
 
 Latest staged runtime report: **49 / 49 passing**
 
-- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260515-093009.md`
+- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260515-100925.md`
 - Binary: `build-arm64-linux/ish`
 - Rootfs: `alpine-arm64-fakefs`
 - Timeout: `TIMEOUT_S=180`
