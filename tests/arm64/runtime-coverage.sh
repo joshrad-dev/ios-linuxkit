@@ -627,6 +627,68 @@ int main(void) {
 }
 EOF
 
+    cat >"$dir/fused_addsub_ldr_fault.c" <<'EOF'
+#define _GNU_SOURCE
+#include <signal.h>
+#include <setjmp.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <ucontext.h>
+
+uintptr_t expected_pc;
+void fused_fault(void);
+
+__asm__(
+".text\n"
+".align 2\n"
+".global fused_fault\n"
+"fused_fault:\n"
+"    adrp x12, expected_pc\n"
+"    add x12, x12, :lo12:expected_pc\n"
+"    adr x13, 1f\n"
+"    str x13, [x12]\n"
+"    mov x9, #-8\n"
+"    add x10, x9, #8\n"
+"1:  ldr x11, [x10]\n"
+"    ret\n"
+);
+
+static sigjmp_buf jb;
+static volatile uintptr_t observed_pc;
+static volatile uintptr_t observed_fault;
+static volatile uintptr_t observed_x10;
+
+static void handler(int sig, siginfo_t *si, void *uctx) {
+    (void)sig;
+    ucontext_t *uc = (ucontext_t *)uctx;
+    observed_pc = (uintptr_t)uc->uc_mcontext.pc;
+    observed_fault = (uintptr_t)si->si_addr;
+    observed_x10 = (uintptr_t)uc->uc_mcontext.regs[10];
+    siglongjmp(jb, 1);
+}
+
+int main(void) {
+    struct sigaction sa = {0};
+    sa.sa_sigaction = handler;
+    sa.sa_flags = SA_SIGINFO;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGSEGV, &sa, NULL) != 0)
+        return 1;
+    if (sigsetjmp(jb, 1) == 0) {
+        fused_fault();
+        return 1;
+    }
+    if (observed_pc != expected_pc || observed_fault != 0 || observed_x10 != 0) {
+        fprintf(stderr, "bad fused fault expected_pc=%#lx pc=%#lx fault=%#lx x10=%#lx\n",
+                (unsigned long)expected_pc, (unsigned long)observed_pc,
+                (unsigned long)observed_fault, (unsigned long)observed_x10);
+        return 1;
+    }
+    puts("fused-addsub-ldr-fault-ok");
+    return 0;
+}
+EOF
+
 
     cp "$PROJECT_DIR/tests/arm64/signals/sigaltstack-thread.c" "$dir/sigaltstack_thread.c"
     push_tree "$dir" "$GUEST_WORK/c"
@@ -1040,6 +1102,7 @@ run_lane() {
     run_test c "arm64 DC ZVA sysreg/instruction" "cd '$GUEST_WORK/c' && gcc -O0 dczva.c -o dczva && ./dczva | grep -qx dczva-ok"
     run_test c "arm64 signal ucontext layout" "cd '$GUEST_WORK/c' && gcc -O0 signal_ucontext.c -o signal_ucontext && ./signal_ucontext | grep -qx signal-ucontext-ok"
     run_test c "arm64 precise fault pc" "cd '$GUEST_WORK/c' && gcc -O0 -fno-pie -no-pie precise_fault_pc.c -o precise_fault_pc && ./precise_fault_pc | grep -qx precise-fault-pc-ok"
+    run_test c "arm64 fused addsub ldr fault pc" "cd '$GUEST_WORK/c' && gcc -O0 -fno-pie -no-pie fused_addsub_ldr_fault.c -o fused_addsub_ldr_fault && ./fused_addsub_ldr_fault | grep -qx fused-addsub-ldr-fault-ok"
     run_test c "per-thread sigaltstack" "cd '$GUEST_WORK/c' && gcc -O0 sigaltstack_thread.c -o sigaltstack_thread -pthread && ./sigaltstack_thread | grep -qx sigaltstack-thread-ok"
     run_test c "arm64 CCMP/CCMN NV condition" "cd '$GUEST_WORK/c' && gcc -O0 ccmp_nv.c -o ccmp_nv && ./ccmp_nv | grep -qx ccmp-nv-ok"
     run_test c "arm64 barriers DMB/DSB/ISB" "cd '$GUEST_WORK/c' && gcc -O0 barriers.c -o barriers && ./barriers | grep -qx barriers-ok"

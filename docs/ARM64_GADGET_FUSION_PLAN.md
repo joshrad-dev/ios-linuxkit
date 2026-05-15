@@ -102,6 +102,21 @@ Explicit Phase 2 deny-list until separately proven:
 
 Implementation requirement: every fused memory sub-operation must emit/set a fault-PC slot for the specific faultable guest instruction before touching guest memory. If the fused gadget contains more than one faultable memory access, it needs per-access metadata, not a single block-level saved PC.
 
+Phase 2A implementation tranche:
+
+- Added opt-in candidate counters:
+  - `addsub_ldr_cand` for `ADD/SUB (imm, no flags) -> integer LDR unsigned-offset` candidates.
+  - `addsub_str_cand` for `ADD/SUB (imm, no flags) -> integer STR unsigned-offset` candidates.
+  - `ldr_cbz_cand` for `LDR integer -> CBZ/CBNZ` candidates.
+- Node/Bun counter run `/workspace/tmp/ish-arm64-node-bun-perf-20260515-230404.md` was **10 / 10 passing** and selected `ADD/SUB -> LDR` as the first target: Node JSON had `addsub_ldr_cand=178333`, Node eval `51063`, Bun JSON `1688`.
+- Implemented a narrow `ADD/SUB (imm, 64-bit, no flags) + LDR Xt, [Xd, #imm]` fusion for adjacent same-page instructions. The fused gadget stores the ADD/SUB result before the LDR and writes the LDR guest PC into `LOCAL_jit_saved_pc` before the faultable memory access.
+- Added runtime fixture `arm64 fused addsub ldr fault pc`, which verifies both precise LDR fault PC and the pre-fault ADD side effect in the guest signal context.
+- Validation reports:
+  - Targeted fused fault smoke: `fused-addsub-ldr-fault-ok` with `addsub_ldr64=702`.
+  - Counter-enabled Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260515-230939.md`, **10 / 10 passing**. Representative fusion hits: Node JSON `addsub_ldr64=111223`, Node eval `24312`, Bun JSON `838`.
+  - Default/no-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260515-231042.md`, **10 / 10 passing**, no stats output.
+  - Core Alpine runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260515-231122.md`, **52 / 52 passing**.
+
 ## Phase 3: linear superblocks
 
 Phase 3 should wait until the Phase 1 fusion tranche is stable across repeated Node/Bun and core runtime runs. Initial design remains same-page and conservative:
