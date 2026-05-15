@@ -297,6 +297,7 @@ syscall_t syscall_table[] = {
     [437] = (syscall_t) sys_openat2,
     [438] = (syscall_t) syscall_silent_stub, // pidfd_getfd
     [439] = (syscall_t) sys_faccessat2,
+    [452] = (syscall_t) sys_fchmodat2,
 };
 
 #define NUM_SYSCALLS (sizeof(syscall_table) / sizeof(syscall_table[0]))
