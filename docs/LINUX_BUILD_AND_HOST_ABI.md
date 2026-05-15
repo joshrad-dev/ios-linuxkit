@@ -256,7 +256,7 @@ Directory reads now propagate or infer Linux `DT_*` values:
 
 Validation: a minimal Bun recursive `fs.cpSync` directory tree copy succeeds,
 PiClaw no longer logs the bootstrap `ENOTSUP ... copyfile` warning, and staged
-runtime coverage remains **49 / 49 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260513-222929.md`).
+runtime coverage remains **49 / 49 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260515-132014.md`), with the later `fchmodat2(AT_EMPTY_PATH)` and high-address `MAP_NORESERVE` reservation-overlap probes included in the staged gate.
 
 ## Blocking I/O and exit cleanup
 

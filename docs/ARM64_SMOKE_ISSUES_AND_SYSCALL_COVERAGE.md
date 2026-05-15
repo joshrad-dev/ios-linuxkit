@@ -1,6 +1,6 @@
 # ARM64 smoke issues and syscall coverage appraisal
 
-Updated: 2026-05-13
+Updated: 2026-05-15
 
 ## Executive status
 
@@ -10,7 +10,7 @@ The current ARM64 Linux-host fakefs is in a good core-runtime state:
 - Benchmarks Game core tier: **9 official language rows × 10 benchmarks = 90 / 90 runs passing**.
 - Java-equivalent probe: **10 / 10 passing** in HotSpot default mixed mode; interpreter fallback mode also passes.
 - Native compiler rows additionally build inside the guest: **GCC 10 / 10 builds**, **G++ 10 / 10 builds**.
-- The rows now include interpreted runtimes, managed runtimes, native compilers, big integers, regex engines, pipes/stdin/stdout, `fork()`, guest pthreads, futex-heavy language runtimes, SysV shared-memory/message-queue IPC, and staged Python/Lua/Java/Clojure/PyPy/Swift/Rust/Erlang/Zig smoke or availability coverage.
+- The rows now include interpreted runtimes, managed runtimes, native compilers, big integers, regex engines, pipes/stdin/stdout, `fork()`, guest pthreads, futex-heavy language runtimes, SysV shared-memory/message-queue IPC, `fchmodat2(AT_EMPTY_PATH)`, high-address `MAP_NORESERVE` reservation-overlap regression coverage, Alpine npm AI CLI startup coverage, and staged Python/Lua/Java/Clojure/PyPy/Swift/Rust/Erlang/Zig smoke or availability coverage.
 
 ## Issues found by smoke workloads
 
@@ -23,6 +23,7 @@ The current ARM64 Linux-host fakefs is in a good core-runtime state:
 | PHP Benchmarks Game | Fast official PHP variants failed in `shmop_*()` and `msg_*()` calls. | ARM64 direct SysV shared memory and message queue syscalls were stubs. | **Fixed**: implemented enough `shmget`/`shmctl`/`shmat`/`shmdt` and `msgget`/`msgctl`/`msgsnd`/`msgrcv` for forked worker result passing. Runtime coverage now includes a C SysV IPC across-`fork()` test. |
 | Bun/PiClaw smoke | Bun recursive copy attempted file-copy on directories and hit `ENOTSUP`. | `getdents64` returned `DT_UNKNOWN` instead of directory entry types. | **Fixed**: directory entry `d_type` is now reported. |
 | Bun/JSC smoke | Bun allocator/free-list crashes around high heap/cage mappings. | ARM64 fault retry was imprecise for translated load/store blocks; high mmap hints were also mishandled. | **Fixed**: precise memory-fault retry PC and high-address ARM64 mmap handling. |
+| Claude Code / Bun standalone AI CLI | Unauthenticated `claude --version` could crash after large high-address lazy reservations. | Large `MAP_NORESERVE` reservations were invisible to high-hole allocation/alignment checks, allowing later medium Bun/JSC mappings to overlap an existing lazy reservation. | **Fixed**: high-hole allocation, caller hints, and alignment checks are reservation-aware; Alpine npm AI CLI coverage is 14/14. |
 | Bun/JSC smoke | `bun -e`, timers, and server startup could stall. | JSC parallel/concurrent GC uses signal coordination patterns that exposed iSH scheduling/signal-delivery limits. | **Mitigated correctly for this runtime**: ARM64 guest shim constrains JSC to one marker and disables concurrent GC. |
 | go-gte workload | Model conversion trapped on AdvSIMD FP widening conversion. | Missing ARM64 `FCVTL`/`FCVTL2` instruction coverage. | **Fixed**: H→S and S→D widening conversion handlers added. |
 | GCC/G++ Benchmarks Game | Several fastest native variants include `immintrin.h`, `x86intrin.h`, SSE, or AVX intrinsics. | Official source is x86-specific, not portable C/C++ and not an ARM64 emulation bug. | **Accounted for, not patched**: rows record these alternatives and select the next official portable source. |
@@ -38,32 +39,32 @@ Static analysis of `kernel/arch/arm64/calls.c` as of this appraisal:
 
 | Metric | Count | Notes |
 |---|---:|---|
-| ARM64 syscall table span | 440 slots | Numeric span `0..439`; includes many holes/newer syscalls that are not explicitly named. |
-| Explicitly assigned slots | 286 | Includes the `[5 ... 16]` xattr range expanded to 12 slots. |
-| Functional `sys_*` implementations | 207 | Real handlers, excluding xattr/success/silent/loud stubs. |
+| ARM64 syscall table span | 453 slots | Numeric span `0..452`; includes many holes/newer syscalls that are not explicitly named, plus `fchmodat2` at 452. |
+| Explicitly assigned slots | 287 | Includes the `[5 ... 16]` xattr range expanded to 12 slots. |
+| Functional `sys_*` implementations | 208 | Real handlers, excluding xattr/success/silent/loud stubs. |
 | Compatibility success stub | 1 | `sync` returns success. |
 | xattr stub range | 12 | Extended attributes are recognized but not implemented as real storage semantics. |
 | Loud `ENOSYS` stubs | 61 | Printed as stub syscall diagnostics when hit. |
 | Silent `ENOSYS` stubs | 5 | Modern runtime probes where quiet fallback is expected (`io_uring_*`, `pidfd_*`). |
-| Unassigned slots in span | 154 | Default to `ENOSYS`; mostly gaps between older asm-generic and newer syscall ranges. |
+| Unassigned slots in span | 166 | Default to `ENOSYS`; mostly gaps between older asm-generic and newer syscall ranges. |
 
 Useful ratios:
 
-- Functional coverage of explicitly assigned ARM64 slots: **207 / 286 = 72.4%**.
-- Functional coverage of the full numeric `0..439` span: **207 / 440 = 47.0%**. This denominator overstates practical workload exposure because it includes unassigned holes.
-- Functional-or-benign assigned coverage, counting `sync` success and xattr-recognized stubs: **220 / 286 = 76.9%**.
+- Functional coverage of explicitly assigned ARM64 slots: **208 / 287 = 72.5%**.
+- Functional coverage of the full numeric `0..452` span: **208 / 453 = 45.9%**. This denominator overstates practical workload exposure because it includes unassigned holes.
+- Functional-or-benign assigned coverage, counting `sync` success and xattr-recognized stubs: **221 / 287 = 77.0%**.
 
 ## Coverage strengths
 
 The implemented set is now strong for the workloads currently passing:
 
 - process basics: `clone`, `clone3` fallback behavior, `execve`, `wait4`, `waitid`, `exit`, `exit_group`, tids/pids, groups/users, sessions/process groups;
-- memory: `mmap`, high ARM64 mmap hints, `munmap`, `mprotect`, `mremap`, `madvise`, `mincore`, `mlock`, `msync`, lazy `MAP_NORESERVE` reservations;
+- memory: `mmap`, high ARM64 mmap hints, high anonymous `MAP_NORESERVE` arenas, reservation-aware high-hole allocation/alignment, `munmap`, `mprotect`, `mremap`, `madvise`, `mincore`, `mlock`, `msync`, lazy `MAP_NORESERVE` reservations;
 - synchronization: futex wait/wake/requeue/wake-op, robust lists, nanosleep/timers;
-- filesystems: `openat`, `read`/`write`, `readv`/`writev`, `pread`/`pwrite`, `preadv`/`pwritev`, `getdents64`, `statx`, `fstatat`, `copy_file_range`, `sendfile`, `splice`, chmod/chown/link/symlink/rename/unlink/mkdir, `statfs`/`fstatfs`;
+- filesystems: `openat`, `read`/`write`, `readv`/`writev`, `pread`/`pwrite`, `preadv`/`pwritev`, `getdents64`, `statx`, `fstatat`, `fchmodat2(AT_EMPTY_PATH)`, `copy_file_range`, `sendfile`, `splice`, chmod/chown/link/symlink/rename/unlink/mkdir, `statfs`/`fstatfs`;
 - sockets: core TCP/UDP/Unix socket paths, UDP `sendto`/`recvfrom`, TCP `listen`/`accept`, `getsockname`, socket options, `socketpair`, `accept4`, `sendmsg`/`recvmsg`, `sendmmsg`/`recvmmsg`, fd passing;
 - IPC: SysV shared memory, SysV semaphores, SysV message queues, POSIX message queues, eventfd, epoll, timerfd, inotify;
-- runtime probes: `rseq`, `memfd_create`, `openat2`, `faccessat2`, `preadv2`, `pwritev2`, `process_vm_readv`, `process_vm_writev`, and quiet fallback stubs for remaining modern optional probes.
+- runtime probes: `rseq`, `memfd_create`, `openat2`, `faccessat2`, `fchmodat2`, `preadv2`, `pwritev2`, `process_vm_readv`, `process_vm_writev`, and quiet fallback stubs for remaining modern optional probes.
 
 ## Known syscall gaps and likely priority
 
@@ -75,7 +76,7 @@ These are not blocking the current smoke set, but they frame the next coverage w
 | Closed | SysV semaphores: `semget`, `semctl`, `semop`, `semtimedop` | Implemented and covered in staged runtime coverage. |
 | Closed | `signalfd4` | Implemented and covered with blocked-signal delivery through a signalfd. |
 | Closed | `memfd_create` | Implemented with anonymous realfs-backed temp fd semantics and covered with read/write/vector I/O. |
-| Closed | `openat2`, `faccessat2` | Implemented for common no-`resolve` `openat2` and full `faccessat2` forwarding; covered in staged runtime coverage. |
+| Closed | `openat2`, `faccessat2`, `fchmodat2` | Implemented for common no-`resolve` `openat2`, full `faccessat2` forwarding, and `fchmodat2(AT_EMPTY_PATH)` including fd and cwd forms; covered in staged runtime coverage. |
 | Closed | `preadv2`/`pwritev2` | Implemented for `flags == 0` fallback-equivalent semantics; covered in staged runtime coverage. |
 | Closed | `process_vm_readv`/`process_vm_writev` | Implemented for permitted in-emulator task memory copies and covered for self-process copies. |
 | Closed | POSIX message queues `mq_*` | Implemented enough named queue send/receive/attr/unlink semantics for runtime coverage. |
@@ -145,7 +146,7 @@ Noisy ARM64 fault diagnostics (`page fault ...`, register dumps, block instructi
 
 ARM64 iSH now keeps guest barrier classes distinct at translation time: `DMB` emits a host `dmb`, `DSB` emits a host `dsb`, and `ISB` emits a host `isb`. Because the current decoder folds all CRm shareability/domain variants into one gadget per barrier class, the `DMB` and `DSB` gadgets use the strongest host `sy` domain so guest `SY`/`LD`/`ST` forms are not under-serialized.
 
-The staged runtime suite includes `arm64 barriers DMB/DSB/ISB`, which compiles and executes common barrier encodings (`dmb sy`, `dmb ish`, `dmb ishld`, `dmb ishst`, `dsb sy`, `dsb ish`, and `isb`) inside the guest. Latest staged coverage is `/workspace/tmp/ish-arm64-runtime-coverage-20260513-222929.md` with **49 / 49 passing**.
+The staged runtime suite includes `arm64 barriers DMB/DSB/ISB`, which compiles and executes common barrier encodings (`dmb sy`, `dmb ish`, `dmb ishld`, `dmb ishst`, `dsb sy`, `dsb ish`, and `isb`) inside the guest. Latest staged coverage is `/workspace/tmp/ish-arm64-runtime-coverage-20260515-132014.md` with **49 / 49 passing**.
 
 ## 2026-05-12 production audit hardening
 
@@ -162,7 +163,7 @@ Validation after these changes: `make build-arm64-linux-all`, staged runtime cov
 
 ## 2026-05-13 runtime coverage expansion and cleanup fixes
 
-The staged runtime suite now includes additional language/toolchain smoke or availability coverage and validates **49 / 49 passing** in `/workspace/tmp/ish-arm64-runtime-coverage-20260513-222929.md`:
+The staged runtime suite now includes additional language/toolchain smoke or availability coverage and validates **49 / 49 passing** in `/workspace/tmp/ish-arm64-runtime-coverage-20260515-132014.md`:
 
 - Python/Lua: version and eval smoke.
 - Java/Clojure: default mixed-mode `javac`/`java`, Java interpreter fallback, and `clojure.main` eval smoke.
@@ -172,3 +173,14 @@ The staged runtime suite now includes additional language/toolchain smoke or ava
 - Zig: `zig version`, `zig build-obj`, and linked object execution through a C harness. During this audit, Zig also exposed missing scalar FP16-to-FP64 conversion (`FCVT Dd,Hn`, instruction `0x1ee2c001`); the ARM64 generator now handles it alongside `FCVT Sd,Hn`. `zig test` remains outside the default gate pending Alpine Zig 0.15.2 compiler-rt `f16` comptime behavior.
 
 This pass also fixed robustness issues exposed by the broader toolchain set: path normalization now bounds at-path and symlink expansion copies, stale path-normalization caching was removed so rapid symlink retargeting cannot resolve to an old target, normal blocking `recvfrom`/`recvmsg` paths no longer print stale `NETDIAG` debug lines in clean workload logs, socket receive, `sendmsg`/`recvmsg`/`SCM_RIGHTS`, and accept/name paths now copy only bounded byte counts, validate sockaddr/iovec/control-message lengths, translate and validate ARM64 `cmsghdr` layout, avoid SCM queue asserts on malformed/native ancillary data, and clean up on partial failures, `setsockopt`/`getsockopt` avoid guest-sized VLAs and respect returned lengths, Unix socket backing paths are bounded, failed Unix `bind()` cleanup clears released name references, blocking realfs/socket read paths surface guest signals instead of retrying all host `EINTR`s, and `exit_group` waits long enough for helper threads to observe shutdown cleanly.
+
+## 2026-05-15 AI CLI and high-address reservation audit
+
+The separate AI CLI runtime suite validates unauthenticated install/startup/version/help probes for Claude Code, OpenAI Codex, Pi, GitHub Copilot, OpenCode, and Gemini CLI. The latest Alpine npm lane report is `/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-132954.md` with **14 / 14 passing**.
+
+This audit closed two runtime correctness issues found while isolating Claude/Bun startup failures:
+
+- ARM64 `fchmodat2` syscall 452 is now wired and covered, including `AT_EMPTY_PATH` on an open fd and on `AT_FDCWD`/current directory.
+- High-address lazy `MAP_NORESERVE` reservations are now visible to high-hole allocation, caller-hint rejection, and alignment checks. This prevents later medium Bun/JSC mappings from overlapping an existing reservation; the staged runtime suite covers this with a deliberately misaligned large reservation plus a follow-on medium mapping.
+
+The helper cleanup also keeps ARM64-only reservation handling behind `GUEST_ARM64` in common memory paths; an x86 audit object build confirmed `kernel_memory.c.o` compiles without leaking ARM64 reservation fields into the x86 `struct mem` layout.

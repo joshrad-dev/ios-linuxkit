@@ -1,14 +1,14 @@
 # ARM64 Production Baseline
 
 Date: 2026-05-10
-Reviewed: 2026-05-13
+Reviewed: 2026-05-15
 
 ## Known-good code
 
-- Code baseline: current pushed `master` at `80ac6966` (`audit: validate socket control messages`), successor to tagged validation point `arm64-openjdk21-prod-20260513-r6`; this pass includes expanded language/runtime coverage, ARM64 sysreg/FP16 conversion fixes, bounds-checked path/symlink expansion, guest-signal-aware blocking I/O/exit cleanup, and socket ABI hardening through ARM64 `SCM_RIGHTS` control-message validation.
-- Previous tagged production audit baseline: `arm64-openjdk21-prod-20260513-r6` (post-r5 validation point covering 44/44 staged coverage, Benchmarks Game refresh, Java mixed/interpreter probes, and go-gte smoke; current `master` adds the later Rust/Cargo and socket ABI audit fixes)
-- Branch pushed: `master`
-- Remote pushed: `https://github.com/rcarmo/ish-arm64.git`
+- Code baseline: local `master` at `26bdcb2d` (`mm: isolate arm64 reservation helpers`), successor to tagged validation point `arm64-openjdk21-prod-20260513-r6`; this pass includes expanded language/runtime coverage, ARM64 sysreg/FP16 conversion fixes, bounds-checked path/symlink expansion, guest-signal-aware blocking I/O/exit cleanup, socket ABI hardening through ARM64 `SCM_RIGHTS` control-message validation, `fchmodat2(AT_EMPTY_PATH)` coverage, AI CLI startup coverage, and reservation-aware high-address `MAP_NORESERVE` handling.
+- Previous tagged production audit baseline: `arm64-openjdk21-prod-20260513-r6` (post-r5 validation point covering 44/44 staged coverage, Benchmarks Game refresh, Java mixed/interpreter probes, and go-gte smoke; current local `master` adds the later Rust/Cargo, socket ABI, AI CLI, `fchmodat2`, and high-address reservation audit fixes).
+- Branch: `master`.
+- Remote target for this working branch: `https://github.com/rcarmo/ish-arm64.git`; `origin` is configured to this repository for fetch and push.
 
 ## Host used for validation
 
@@ -47,9 +47,12 @@ Reviewed: 2026-05-13
 
 ## Validation artifacts
 
-- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260513-222929.md`
+- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260515-132014.md`
   - Result: 49 / 49 passing
-  - Includes no-safety-valve/no-NETDIAG Rust Cargo/std coverage, Erlang helper-thread cleanup validation, UDP/TCP socket-option and `sendmsg`/`recvmsg`/`SCM_RIGHTS` ABI coverage, and Python/Lua/Java/Clojure/PyPy/Swift/Rust/Erlang/Zig smoke or availability coverage.
+  - Includes no-safety-valve/no-NETDIAG Rust Cargo/std coverage, Erlang helper-thread cleanup validation, UDP/TCP socket-option and `sendmsg`/`recvmsg`/`SCM_RIGHTS` ABI coverage, `fchmodat2(AT_EMPTY_PATH)` coverage, high-address `MAP_NORESERVE` overlap regression coverage, and Python/Lua/Java/Clojure/PyPy/Swift/Rust/Erlang/Zig smoke or availability coverage.
+- AI CLI runtime coverage: `/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-132954.md`
+  - Result: 14 / 14 passing on the Alpine npm lane.
+  - Includes unauthenticated install/startup/version/help probes for Claude Code, OpenAI Codex, Pi, GitHub Copilot, OpenCode, and Gemini CLI; Debian AI CLI remains a separate background lane blocked by glibc/libuv thread creation failures.
 - Go Benchmarks Game smoke: `/workspace/tmp/benchmarksgame-go-smoke-20260513-144802.md`
   - Result: 10 / 10 passing
 - Default mixed-mode Java Hello smoke: `/workspace/tmp/java-hello-audit-r5-20260512.log`
@@ -63,7 +66,7 @@ Reviewed: 2026-05-13
 - OpenJDK default mixed mode is enabled; no `-Xint`, `-XX:-UseCompiler`, `ReplayIgnoreInitErrors`, `DisableIntrinsic`, or runtime/user-data patch is required for the validated Java smoke.
 - The final audit pass also hardens host/guest launch plumbing: initial argv construction is bounds-checked, ELF `PT_INTERP` names are bounded and explicitly NUL-terminated, shebang trimming no longer walks before the optional argument string, and ptraceomatic no longer reads before `getenv("TERM")` while constructing the initial environment.
 - ARM64 synthetic non-null read-fault recovery remains compile-time gated by `ENABLE_ARM64_READ_FAULT_RECOVERY` and disabled in production builds.
-- Guest self-modifying/JIT-patched code invalidation, `CLREX`, `LDXR` widths, `LDPSW`, `DMB`/`DSB`/`ISB`, per-thread `sigaltstack`, and Python/Lua/Java/Clojure/PyPy/Swift/Rust/Erlang/Zig toolchain startup/codegen or availability coverage are covered by runtime fixtures.
+- Guest self-modifying/JIT-patched code invalidation, `CLREX`, `LDXR` widths, `LDPSW`, `DMB`/`DSB`/`ISB`, per-thread `sigaltstack`, `fchmodat2(AT_EMPTY_PATH)`, high-address `MAP_NORESERVE` reservation overlap, and Python/Lua/Java/Clojure/PyPy/Swift/Rust/Erlang/Zig toolchain startup/codegen or availability coverage are covered by runtime fixtures.
 - Host OS differences for sysinfo, thread rusage, fd path lookup, stat timestamp fields, random bytes, thread naming, and memory-pressure hooks are centralized through `platform/platform.h`.
 
 ## Rollback point
@@ -79,3 +82,4 @@ Reviewed: 2026-05-13
 
 - Non-production diagnostic compatibility for ARM64 read-fault recovery exists behind `ENABLE_ARM64_READ_FAULT_RECOVERY`; keep it disabled unless explicitly debugging.
 - Native offload and socket/poll implementations still contain host-specific implementation branches outside `platform/platform.h`; the second socket audit hardened Unix socket backing paths, accept/name buffers, send/receive buffer allocation, ARM64 control-message layout/validation, socket-option buffers, and bind-failure cleanup, but broader host-specific socket/poll cleanup remains a future candidate.
+- Full x86 guest builds remain outside this ARM64 baseline; an audit object build confirmed `kernel_memory.c.o` no longer leaks ARM64 reservation helpers into x86 compilation, while unrelated x86 build failures remain in ARM64-specific `main.c`/`asbestos.c` paths.

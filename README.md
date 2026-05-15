@@ -18,7 +18,7 @@ Latest staged runtime report: **49 / 49 passing**
 
 AI CLI runtime coverage is tracked as a separate second-stage suite because it installs fast-moving agent packages and should not contaminate the stable 49-test core gate. Latest Alpine npm-only report: **14 / 14 passing** at `/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-132954.md`. The Claude Code standalone Bun binary crash was traced to high-address `MAP_NORESERVE` reservation overlap; high-hole allocation and alignment are now reservation-aware. Debian AI CLI remains a background lane while glibc thread creation is still blocked by `pthread_create()`/libuv assertions.
 
-This README reflects the validation sequence after tagged point `arm64-openjdk21-prod-20260513-r6`, including the later Rust/Cargo and socket ABI audit fixes, lane-aware runtime coverage, and the separate AI CLI coverage harness.
+This README reflects the validation sequence after tagged point `arm64-openjdk21-prod-20260513-r6`, including the later Rust/Cargo and socket ABI audit fixes, lane-aware runtime coverage, `fchmodat2(AT_EMPTY_PATH)`, reservation-aware high-address `MAP_NORESERVE` handling, and the separate AI CLI coverage harness.
 
 ## Quick start
 
@@ -78,7 +78,7 @@ A passing core run writes `ish-arm64-runtime-coverage-YYYYMMDD-HHMMSS.md` under 
 The C stage is the broadest low-level coverage lane:
 
 - **SysV IPC:** `shmget`/`shmat`/`shmdt`/`shmctl`, `msgget`/`msgsnd`/`msgrcv`/`msgctl` across `fork()`.
-- **High-value syscall gaps:** `signalfd4`, SysV semaphores, POSIX message queues, `memfd_create`, `openat2`, `faccessat2`, `preadv2`, `pwritev2`, `process_vm_readv`, and `process_vm_writev`.
+- **High-value syscall gaps:** `signalfd4`, SysV semaphores, POSIX message queues, `memfd_create`, `openat2`, `faccessat2`, `fchmodat2(AT_EMPTY_PATH)`, `preadv2`, `pwritev2`, `process_vm_readv`, and `process_vm_writev`.
 - **Socket ABI:** UDP `sendto`/`recvfrom`, TCP `listen`/`accept`, `getsockname`, `setsockopt`, `getsockopt`, socketpair `sendmsg`/`recvmsg`, and ARM64 `SCM_RIGHTS` fd passing with guest `cmsghdr` layout validation.
 - **ARM64 sysreg/instruction fixtures:** `DCZID_EL0`/`dc zva`, signal `ucontext_t`, per-thread `sigaltstack`, CCMP/CCMN condition-code-15 (`NV`), DMB/DSB/ISB barriers, and self-modifying-code invalidation.
 

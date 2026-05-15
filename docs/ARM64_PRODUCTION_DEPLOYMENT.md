@@ -1,6 +1,7 @@
 # ARM64 Production Deployment Notes
 
 Date: 2026-05-12
+Reviewed: 2026-05-15
 
 ## Scope
 
@@ -24,7 +25,7 @@ This host can validate and stage the ARM64 Linux iSH production binary/rootfs ba
 - Alpine release: `3.23.4`
 - OpenJDK package baseline: `openjdk21-jdk-21.0.10_p7-r0`
 
-Note: later audit tags through `arm64-openjdk21-prod-20260513-r6` and subsequent pushed `master` audit commits through `80ac6966` were validated on the same rootfs with staged runtime coverage, default mixed-mode Java Hello, expanded Rust/Cargo coverage, and socket ABI/`SCM_RIGHTS` coverage. The local deployment artifact above intentionally records the binary/rootfs staged at deployment time; regenerate the artifact directory if an external release wants the exact current master payload.
+Note: later audit tags through `arm64-openjdk21-prod-20260513-r6` and subsequent local `master` audit commits through `26bdcb2d` were validated on the same rootfs with staged runtime coverage, default mixed-mode Java Hello, expanded Rust/Cargo coverage, socket ABI/`SCM_RIGHTS` coverage, `fchmodat2(AT_EMPTY_PATH)` coverage, high-address `MAP_NORESERVE` reservation-overlap regression coverage, and Alpine npm AI CLI startup coverage. The local deployment artifact above intentionally records the binary/rootfs staged at deployment time; regenerate the artifact directory if an external release wants the exact current master payload. The working repository `origin` is configured for `rcarmo/ish-arm64`; verified bundle/patch exports remain a fallback handoff path.
 
 ## Post-deploy Java smoke
 
