@@ -1690,7 +1690,7 @@ static int try_fuse_addsub_str8(struct gen_state *state, uint32_t op, uint32_t r
 }
 
 static void count_ldr_cbz_candidate(struct gen_state *state, uint32_t rn, uint32_t rt,
-                                     uint32_t size, bool sign_extend, bool extend64) {
+                                     uint32_t size, bool sign_extend) {
     uint32_t next_insn;
     if (!gen_peek_next_insn(state, &next_insn))
         return;
@@ -1704,11 +1704,11 @@ static void count_ldr_cbz_candidate(struct gen_state *state, uint32_t rn, uint32
         if (rn == 31)
             ARM64_FUSION_STAT_INC(arm64_fusion_ldr64_sp_cbz64_candidate_count);
     }
-    if (size == 2 && sign_extend && ((next_insn >> 31) & 1))
+    if (size == 2 && sign_extend)
         ARM64_FUSION_STAT_INC(arm64_fusion_ldr32_sx_cbz64_candidate_count);
-    if (size == 1 && sign_extend && ((next_insn >> 31) & 1) == extend64)
+    if (size == 1 && sign_extend)
         ARM64_FUSION_STAT_INC(arm64_fusion_ldr16_sx_cbz_candidate_count);
-    if (size == 0 && sign_extend && ((next_insn >> 31) & 1) == extend64)
+    if (size == 0 && sign_extend)
         ARM64_FUSION_STAT_INC(arm64_fusion_ldr8_sx_cbz_candidate_count);
 }
 
@@ -1785,7 +1785,7 @@ static int try_fuse_ldr32_sx_cbz64(struct gen_state *state, uint32_t rn, uint32_
         return -1;
     if ((next_insn & 0x7e000000) != 0x34000000)
         return -1;
-    if ((next_insn & 0x1f) != rt || ((next_insn >> 31) & 1) == 0)
+    if ((next_insn & 0x1f) != rt)
         return -1;
 
     bool is_cbnz = (next_insn >> 24) & 1;
@@ -1852,7 +1852,7 @@ static int try_fuse_ldr_sx_cbz(struct gen_state *state, uint32_t rn, uint32_t rt
         return -1;
     if ((next_insn & 0x7e000000) != 0x34000000)
         return -1;
-    if ((next_insn & 0x1f) != rt || (((next_insn >> 31) & 1) != extend64))
+    if ((next_insn & 0x1f) != rt)
         return -1;
 
     bool is_cbnz = (next_insn >> 24) & 1;
@@ -2920,7 +2920,7 @@ static int gen_ldst(struct gen_state *state, uint32_t insn) {
         bool sign_extend = (opc & 2) != 0;
         bool extend64 = sign_extend && opc == 2;
         if (is_load) {
-            count_ldr_cbz_candidate(state, rn, rt, size, sign_extend, extend64);
+            count_ldr_cbz_candidate(state, rn, rt, size, sign_extend);
             if (!sign_extend && size == 3 && try_fuse_ldr64_cbz64(state, rn, rt, imm12) == 0)
                 return 0;
             if (!sign_extend && size == 3 && try_fuse_ldr64_sp_cbz64(state, rn, rt, imm12) == 0)

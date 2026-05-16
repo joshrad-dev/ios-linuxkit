@@ -313,6 +313,16 @@ Phase 2P implementation tranche:
   - Default/no-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-035444.md`, **10 / 10 passing**, no stats output.
   - Core Alpine runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-035535.md`, **82 / 82 passing**.
 
+Phase 2Q implementation tranche:
+
+- Relaxed sign-extending load branch fusions so `LDRSW`, `LDRSB`, and `LDRSH` may fuse with either 32-bit or 64-bit `CBZ/CBNZ` when the branch tests the same destination register. This is safe because zero/nonzero is invariant under the sign-extension result written by the load.
+- Extended the existing `ldrsw` and `ldrsx8/16` runtime fixtures to include branch-width mismatch cases such as `LDRSW Xt + CBNZ Wt`, `LDRSB Xt + CBNZ Wt`, and `LDRSH Wt + CBZ Xt`.
+- Validation reports:
+  - Targeted success/fault smokes: `ldrsw-cbz-fusion-ok`, `fused-ldrsw-cbz-fault-ok`, `ldrsx8-16-cbz-fusion-ok`, and `fused-ldrsx8-16-cbz-fault-ok`; counter-only fixture runs showed `ldr32_sx_cbz64=6` and signed byte/halfword counters at `5` each.
+  - Counter-enabled Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-041206.md`, **10 / 10 passing**. The measured `ldr_cbz` residual gap is about `773` (`137646` fused out of `138419` candidates), suggesting the remaining gap is mostly page/shape overcount rather than a high-value adjacent same-page width gap.
+  - Default/no-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-041249.md`, **10 / 10 passing**, no stats output.
+  - Core Alpine runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-041337.md`, **82 / 82 passing**.
+
 ## Phase 3: linear superblocks
 
 Phase 3 should wait until the Phase 1 fusion tranche is stable across repeated Node/Bun and core runtime runs. Initial design remains same-page and conservative:

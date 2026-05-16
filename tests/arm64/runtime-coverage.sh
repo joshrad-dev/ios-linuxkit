@@ -1712,7 +1712,7 @@ __asm__(
 );
 
 int main(void) {
-    uint64_t a = 0, b = 0, loaded0 = 99, loaded1 = 0;
+    uint64_t a = 0, b = 0, c = 0, d = 0, loaded0 = 99, loaded1 = 0;
     __asm__ volatile(
         "mov x9, %[base]\n"
         "ldrsw x10, [x9, #0]\n"
@@ -1727,15 +1727,29 @@ int main(void) {
         "b 4f\n"
         "3: mov %[b], #22\n"
         "4:\n"
+        "ldrsw x12, [x9, #0]\n"
+        "cbz w12, 5f\n"
+        "mov %[c], #99\n"
+        "b 6f\n"
+        "5: mov %[c], #33\n"
+        "6:\n"
+        "ldrsw x13, [x9, #4]\n"
+        "cbnz w13, 7f\n"
+        "mov %[d], #99\n"
+        "b 8f\n"
+        "7: mov %[d], #44\n"
+        "8:\n"
         "mov %[loaded0], x10\n"
         "mov %[loaded1], x11\n"
-        : [a] "=&r"(a), [b] "=&r"(b), [loaded0] "=&r"(loaded0), [loaded1] "=&r"(loaded1)
+        : [a] "=&r"(a), [b] "=&r"(b), [c] "=&r"(c), [d] "=&r"(d),
+          [loaded0] "=&r"(loaded0), [loaded1] "=&r"(loaded1)
         : [base] "r"(data)
-        : "x9", "x10", "x11", "memory", "cc");
+        : "x9", "x10", "x11", "x12", "x13", "memory", "cc");
     uint64_t sp = sp_ldrsw_cbz_case();
-    if (a != 11 || b != 22 || loaded0 != 0 || loaded1 != UINT64_MAX || sp != 34) {
-        printf("ldrsw-cbz-fail %llu %llu %llx %llx %llu\n",
+    if (a != 11 || b != 22 || c != 33 || d != 44 || loaded0 != 0 || loaded1 != UINT64_MAX || sp != 34) {
+        printf("ldrsw-cbz-fail %llu %llu %llu %llu %llx %llx %llu\n",
                (unsigned long long)a, (unsigned long long)b,
+               (unsigned long long)c, (unsigned long long)d,
                (unsigned long long)loaded0, (unsigned long long)loaded1,
                (unsigned long long)sp);
         return 1;
@@ -1880,15 +1894,37 @@ int main(void) {
         "add %[sum], %[sum], #100\n"
         "b 8f\n"
         "7: add %[sum], %[sum], #8\n"
-        "8: mov %[b64], x10\n"
+        "8: mov x9, %[d8]\n"
+        "ldrsb x14, [x9, #1]\n"
+        "cbnz w14, 9f\n"
+        "add %[sum], %[sum], #100\n"
+        "b 10f\n"
+        "9: add %[sum], %[sum], #16\n"
+        "10: ldrsb w15, [x9, #0]\n"
+        "cbz x15, 11f\n"
+        "add %[sum], %[sum], #100\n"
+        "b 12f\n"
+        "11: add %[sum], %[sum], #32\n"
+        "12: mov x9, %[d16]\n"
+        "ldrsh x16, [x9, #2]\n"
+        "cbnz w16, 13f\n"
+        "add %[sum], %[sum], #100\n"
+        "b 14f\n"
+        "13: add %[sum], %[sum], #64\n"
+        "14: ldrsh w17, [x9, #0]\n"
+        "cbz x17, 15f\n"
+        "add %[sum], %[sum], #100\n"
+        "b 16f\n"
+        "15: add %[sum], %[sum], #128\n"
+        "16: mov %[b64], x10\n"
         "mov %[b32], x11\n"
         "mov %[h64], x12\n"
         "mov %[h32], x13\n"
         : [sum] "+r"(sum), [b64] "=&r"(b64), [b32] "=&r"(b32), [h64] "=&r"(h64), [h32] "=&r"(h32)
         : [d8] "r"(data8), [d16] "r"(data16)
-        : "x9", "x10", "x11", "x12", "x13", "memory", "cc");
+        : "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "memory", "cc");
     uint64_t sp = sp_ldrsx_cbz_case();
-    if (sum != 15 || b64 != UINT64_MAX || b32 != 0xffffffffULL ||
+    if (sum != 255 || b64 != UINT64_MAX || b32 != 0xffffffffULL ||
         h64 != (uint64_t)-7 || h32 != 0xfffffff9ULL || sp != 34) {
         printf("ldrsx8-16-cbz-fail sum=%llu b64=%llx b32=%llx h64=%llx h32=%llx sp=%llu\n",
                (unsigned long long)sum, (unsigned long long)b64,
