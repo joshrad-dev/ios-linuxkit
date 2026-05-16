@@ -38,7 +38,7 @@ This latter part is provided as the only UI/app-packaging change. The built-in t
 
 ## Current validation baseline
 
-The current core runtime gate is **82 / 82 passing** on the Alpine ARM64 fakefs, with no `SAFETY-VALVE` or `NETDIAG` diagnostics in the latest stable report. A separate AI CLI npm-lane suite is **16 / 16 passing**, covering unauthenticated install/startup/version/help probes for modern agent CLIs without contaminating the stable core gate.
+The current core runtime gate is **83 / 83 passing** on the Alpine ARM64 fakefs, with no `SAFETY-VALVE` or `NETDIAG` diagnostics in the latest stable report. A separate AI CLI npm-lane suite is **16 / 16 passing**, covering unauthenticated install/startup/version/help probes for modern agent CLIs without contaminating the stable core gate. The optional CLI corner-case matrix is **27 passing / 2 unsupported / 0 failed**, with Docker daemon/container rows reported as unsupported when iSH lacks the required kernel container primitives.
 
 Additional workload validation includes:
 
@@ -65,7 +65,7 @@ make test-arm64-runtime-coverage \
   ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs \
   REPORT_DIR=/workspace/tmp \
   TIMEOUT_S=180 \
-  INSTALL_TIMEOUT_S=300
+  INSTALL_TIMEOUT_S=1200
 ```
 
 Run the separate AI CLI coverage lane:

@@ -1,6 +1,6 @@
 # ios-linuxkit ARM64 workload smoke tests
 
-Updated: 2026-05-15
+Updated: 2026-05-16
 
 ## Purpose
 
@@ -19,7 +19,7 @@ A workload belongs here when it exercises at least one of these boundaries:
 
 | Workload | Current status | Why it was chosen | Latest useful log/report |
 |---|---:|---|---|
-| Staged runtime coverage | Passing, 83/83 on Alpine | Fast regression gate for shell, `apk`, tmp I/O, C, SysV IPC, high-value syscall gap, `fchmodat2(AT_EMPTY_PATH)`, high-address `MAP_NORESERVE` reservation overlap, UDP/TCP socket-option, and `sendmsg`/`recvmsg`/`SCM_RIGHTS` coverage, ARM64 DC ZVA coverage, ARM64 signal-ucontext and per-thread `sigaltstack` coverage, ARM64 CCMP/CCMN NV-condition coverage, ARM64 DMB/DSB/ISB barrier coverage, ARM64 self-modifying-code invalidation coverage, Go, Bun, Node/npm, Python, Lua, Java, Clojure, PyPy/Swift availability probes, C# NativeAOT availability, Rust, Erlang, and Zig. Catches broad syscall/runtime regressions before heavier probes. | `/workspace/tmp/ish-arm64-runtime-coverage-20260516-125009.md` |
+| Staged runtime coverage | Passing, 83/83 on Alpine | Fast regression gate for shell, `apk`, tmp I/O, C, SysV IPC, high-value syscall gap, `fchmodat2(AT_EMPTY_PATH)`, high-address `MAP_NORESERVE` reservation overlap, UDP/TCP socket-option, and `sendmsg`/`recvmsg`/`SCM_RIGHTS` coverage, ARM64 DC ZVA coverage, ARM64 signal-ucontext and per-thread `sigaltstack` coverage, ARM64 scheduler priority syscall coverage, ARM64 CCMP/CCMN NV-condition coverage, ARM64 DMB/DSB/ISB barrier coverage, ARM64 self-modifying-code invalidation coverage, Go, Bun, Node/npm, Python, Lua, Java, Clojure, PyPy/Swift availability probes, C# NativeAOT SDK availability, Rust, Erlang, and Zig. Catches broad syscall/runtime regressions before heavier probes. | `/workspace/tmp/ish-arm64-runtime-coverage-20260516-211305.md` |
 | AI CLI runtime coverage | Experimental, Alpine npm lane 16/16 | Separate second-stage matrix for unauthenticated install/startup/version/help probes of Claude Code, OpenAI Codex, Pi, GitHub Copilot, OpenCode, Gemini CLI, community Grok CLI, and pip-only Mistral Vibe. Kept separate from the core gate because packages are fast-moving and may expose runtime-specific crashes. | `/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-200605.md` |
 | Node/Bun perf table | Baseline, Alpine 10/10 | Focused timing harness for executor speed work: Node/Bun startup, eval, JSON loop, small-file FS, and recursive copy. Used before/after gadget-fusion and superblock changes. | `/workspace/tmp/ish-arm64-node-bun-perf-20260515-213520.md` |
 | CLI corner-case smoke | Passing/unsupported, Alpine 27 pass / 2 unsupported / 0 fail | Optional/diagnostic harness for CLI/TUI/network/container tools likely to expose terminal, `/proc`, DNS, ptrace, netlink, Unix-socket, and package-manager edge cases. Covers `nushell`/`xonsh` availability, `htop` and `btop` inside `tmux`, `tcpdump`, `traceroute`, `iproute2`, `bind-tools`, direct `curl`/HTTPS `git` DNS, `rcarmo/go-gte` clone, Docker CLI `hello-world`, `dockerd --version`, bounded Docker daemon startup diagnostics, `strace`, `lsof`, `file`, `jq`, and Linuxbrew availability. | `/workspace/tmp/ish-arm64-cli-corner-smoke-20260516-223418.md` |
@@ -32,22 +32,22 @@ A workload belongs here when it exercises at least one of these boundaries:
 Command:
 
 ```sh
-make test-arm64-runtime-coverage REPORT_DIR=/workspace/tmp TIMEOUT_S=120 INSTALL_TIMEOUT_S=300
+make test-arm64-runtime-coverage REPORT_DIR=/workspace/tmp TIMEOUT_S=180 INSTALL_TIMEOUT_S=1200
 ```
 
 Latest result:
 
 ```text
 83 / 83 passing
-report: /workspace/tmp/ish-arm64-runtime-coverage-20260516-125009.md
+report: /workspace/tmp/ish-arm64-runtime-coverage-20260516-211305.md
 ```
 
 Why it matters:
 
 - Establishes the guest can boot, run shell commands, update package indexes, and do basic file I/O.
-- Confirms C compile/execute, SysV shared-memory/message-queue IPC across `fork()`, high-value syscall gaps including `fchmodat2(AT_EMPTY_PATH)`, high-address `MAP_NORESERVE` reservation-overlap regression coverage, UDP/TCP socket-option receive, accept, `sendmsg`/`recvmsg`/`SCM_RIGHTS`, and length handling, per-thread `sigaltstack`, Go compile/run/build/test paths, and broad language smoke coverage through Java/Clojure/Python/Lua/Rust/Erlang/Zig.
+- Confirms C compile/execute, SysV shared-memory/message-queue IPC across `fork()`, high-value syscall gaps including `fchmodat2(AT_EMPTY_PATH)` and scheduler priority calls, high-address `MAP_NORESERVE` reservation-overlap regression coverage, UDP/TCP socket-option receive, accept, `sendmsg`/`recvmsg`/`SCM_RIGHTS`, and length handling, per-thread `sigaltstack`, Go compile/run/build/test paths, and broad language smoke coverage through Java/Clojure/Python/Lua/Rust/Erlang/Zig.
 - Keeps ARM64 generated-code-sensitive fixtures in the standard gate, including DC ZVA, signal `ucontext_t`, CCMP/CCMN `NV`, DMB/DSB/ISB barriers, self-modifying-code invalidation, and Zig object-code generation/link execution.
-- Keeps Bun, Node/npm, Python, Lua, Java, Clojure, PyPy/Swift availability probes, Rust, Erlang, and Zig smoke coverage in the standard gate so runtime/toolchain regressions are caught quickly. Current Rust coverage includes direct `rustc` compile/run, optimized std runtime, `rustc --test`, Cargo build/run/test, threads, atomics, channels, file I/O, TCP loopback, and child processes; Erlang coverage is BEAM version startup; Zig coverage uses `zig build-obj` plus a linked C harness while `zig test` is excluded pending the Alpine Zig 0.15.2 compiler-rt `f16` issue.
+- Keeps Bun, Node/npm, Python, Lua, Java, Clojure, PyPy/Swift availability probes, C# NativeAOT SDK availability, Rust, Erlang, and Zig smoke coverage in the standard gate so runtime/toolchain regressions are caught quickly. Current Rust coverage includes direct `rustc` compile/run, optimized std runtime, `rustc --test`, Cargo build/run/test, threads, atomics, channels, file I/O, TCP loopback, and child processes; Erlang coverage is BEAM version startup; Zig coverage uses `zig build-obj` plus a linked C harness while `zig test` is excluded pending the Alpine Zig 0.15.2 compiler-rt `f16` issue. Full `dotnet publish -p:PublishAot=true` remains opt-in and is not yet promoted because focused probes currently stall in the Roslyn `csc` phase after restore.
 
 ## CLI corner-case smoke
 
@@ -206,8 +206,8 @@ Official labels observed in the site pages and first-pass Alpine 3.23 aarch64 pa
 | `ocaml` | ready-large | `ocaml` available. |
 | `sbcl` | ready-large | `sbcl` available. |
 | `racket` | ready-large | `racket` available. |
-| `csharpaot` | partial/external | `dotnet` packages exist, NativeAOT workload not yet verified. |
-| `fsharpcore` | partial/external | `dotnet` packages exist, F# SDK/workload not yet verified. |
+| `csharpaot` | partial/external | `dotnet9-sdk-aot` and `dotnet10-sdk-aot` are installed and the staged gate reports SDK availability; full NativeAOT publish/run is still opt-in and currently stalls in Roslyn `csc` after restore. |
+| `fsharpcore` | partial/external | `dotnet` SDK packages are installed, but F# SDK/workload execution is not yet verified. |
 | `erlang` | ready-large | `erlang27` is available and BEAM startup/version is covered by staged runtime coverage; a full Benchmarks Game Erlang row is not run yet. |
 | `chapel` | blocked | No Alpine aarch64 package found. |
 | `dartexe` | blocked | No Dart SDK package found; only `dart-sass-js`. |

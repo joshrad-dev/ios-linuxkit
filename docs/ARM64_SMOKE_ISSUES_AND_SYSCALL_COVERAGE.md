@@ -1,6 +1,6 @@
 # ios-linuxkit ARM64 smoke issues and syscall coverage appraisal
 
-Updated: 2026-05-15
+Updated: 2026-05-16
 
 ## Executive status
 
@@ -10,7 +10,7 @@ The current ARM64 Linux-host fakefs is in a good core-runtime state:
 - Benchmarks Game core tier: **9 official language rows × 10 benchmarks = 90 / 90 runs passing**.
 - Java-equivalent probe: **10 / 10 passing** in HotSpot default mixed mode; interpreter fallback mode also passes.
 - Native compiler rows additionally build inside the guest: **GCC 10 / 10 builds**, **G++ 10 / 10 builds**.
-- The rows now include interpreted runtimes, managed runtimes, native compilers, big integers, regex engines, pipes/stdin/stdout, `fork()`, guest pthreads, futex-heavy language runtimes, SysV shared-memory/message-queue IPC, `fchmodat2(AT_EMPTY_PATH)`, high-address `MAP_NORESERVE` reservation-overlap regression coverage, Alpine npm AI CLI startup coverage, staged Python/Lua/Java/Clojure/PyPy/Swift/C# NativeAOT/Rust/Erlang/Zig smoke or availability coverage, and CLI corner-case coverage including `htop`/`btop` under `tmux`, Docker CLI diagnostics, direct HTTPS `curl`/`git`, and `rcarmo/go-gte` clone.
+- The rows now include interpreted runtimes, managed runtimes, native compilers, big integers, regex engines, pipes/stdin/stdout, `fork()`, guest pthreads, futex-heavy language runtimes, SysV shared-memory/message-queue IPC, `fchmodat2(AT_EMPTY_PATH)`, scheduler priority syscall coverage, high-address `MAP_NORESERVE` reservation-overlap regression coverage, Alpine npm AI CLI startup coverage, staged Python/Lua/Java/Clojure/PyPy/Swift/C# NativeAOT SDK availability/Rust/Erlang/Zig smoke or availability coverage, and CLI corner-case coverage including `htop`/`btop` under `tmux`, Docker CLI plus Docker daemon rows reported as unsupported where kernel container primitives are unavailable, direct HTTPS `curl`/`git`, and `rcarmo/go-gte` clone.
 
 ## Issues found by smoke workloads
 
@@ -147,7 +147,7 @@ Noisy ARM64 fault diagnostics (`page fault ...`, register dumps, block instructi
 
 ARM64 iSH now keeps guest barrier classes distinct at translation time: `DMB` emits a host `dmb`, `DSB` emits a host `dsb`, and `ISB` emits a host `isb`. Because the current decoder folds all CRm shareability/domain variants into one gadget per barrier class, the `DMB` and `DSB` gadgets use the strongest host `sy` domain so guest `SY`/`LD`/`ST` forms are not under-serialized.
 
-The staged runtime suite includes `arm64 barriers DMB/DSB/ISB`, which compiles and executes common barrier encodings (`dmb sy`, `dmb ish`, `dmb ishld`, `dmb ishst`, `dsb sy`, `dsb ish`, and `isb`) inside the guest. Latest staged coverage is `/workspace/tmp/ish-arm64-runtime-coverage-20260515-132014.md` with **49 / 49 passing**.
+The staged runtime suite includes `arm64 barriers DMB/DSB/ISB`, which compiles and executes common barrier encodings (`dmb sy`, `dmb ish`, `dmb ishld`, `dmb ishst`, `dsb sy`, `dsb ish`, and `isb`) inside the guest. Latest staged coverage is `/workspace/tmp/ish-arm64-runtime-coverage-20260516-211305.md` with **83 / 83 passing**.
 
 ## 2026-05-12 production audit hardening
 
@@ -164,7 +164,7 @@ Validation after these changes: `make build-arm64-linux-all`, staged runtime cov
 
 ## 2026-05-13 runtime coverage expansion and cleanup fixes
 
-The staged runtime suite now includes additional language/toolchain smoke or availability coverage and validates **49 / 49 passing** in `/workspace/tmp/ish-arm64-runtime-coverage-20260515-132014.md`:
+The staged runtime suite has continued expanding since this pass and now validates **83 / 83 passing** in `/workspace/tmp/ish-arm64-runtime-coverage-20260516-211305.md`; this 2026-05-13 tranche added the following language/toolchain smoke or availability coverage:
 
 - Python/Lua: version and eval smoke.
 - Java/Clojure: default mixed-mode `javac`/`java`, Java interpreter fallback, and `clojure.main` eval smoke.

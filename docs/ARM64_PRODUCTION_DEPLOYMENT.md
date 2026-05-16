@@ -1,7 +1,7 @@
 # ios-linuxkit ARM64 production deployment notes
 
 Date: 2026-05-12
-Reviewed: 2026-05-15
+Reviewed: 2026-05-16
 
 ## Scope
 
@@ -25,7 +25,7 @@ This host can validate and stage the ARM64 Linux iSH production binary/rootfs ba
 - Alpine release: `3.23.4`
 - OpenJDK package baseline: `openjdk21-jdk-21.0.10_p7-r0`
 
-Note: later audit tags through `arm64-openjdk21-prod-20260513-r6` and subsequent local `master` audit commits were validated on the same rootfs with staged runtime coverage, default mixed-mode Java Hello, expanded Rust/Cargo coverage, socket ABI/`SCM_RIGHTS` coverage, `fchmodat2(AT_EMPTY_PATH)` coverage, high-address `MAP_NORESERVE` reservation-overlap regression coverage, and Alpine npm AI CLI startup coverage including community `grok-cli`. The local deployment artifact above intentionally records the binary/rootfs staged at deployment time; regenerate the artifact directory if an external release wants the exact current master payload. The working repository `origin` is configured for `rcarmo/ish-arm64`; verified bundle/patch exports remain a fallback handoff path.
+Note: later audit tags through `arm64-openjdk21-prod-20260513-r6` and subsequent `master` audit commits were validated on the same rootfs with staged runtime coverage, default mixed-mode Java Hello, expanded Rust/Cargo coverage, socket ABI/`SCM_RIGHTS` coverage, `fchmodat2(AT_EMPTY_PATH)` and scheduler priority syscall coverage, high-address `MAP_NORESERVE` reservation-overlap regression coverage, C# NativeAOT SDK availability, Docker CLI/daemon unsupported diagnostics, opt-in ARM64 internal-continue/taken-internal validation, and Alpine npm AI CLI startup coverage including community `grok-cli`. The local deployment artifact above intentionally records the binary/rootfs staged at deployment time; regenerate the artifact directory if an external release wants the exact current master payload. The working repository `origin` is configured for `rcarmo/ios-linuxkit`; verified bundle/patch exports remain a fallback handoff path.
 
 ## Post-deploy Java smoke
 

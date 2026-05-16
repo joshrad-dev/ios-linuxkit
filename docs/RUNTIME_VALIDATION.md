@@ -8,7 +8,7 @@ Supporting documentation: [ARM64 backend](ARM64_BACKEND.md), [workload smoke tes
 
 Latest staged runtime report: **83 / 83 passing**
 
-- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-171357.md`
+- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-211305.md`
 - Binary: `build-arm64-linux/ish`
 - Rootfs: `alpine-arm64-fakefs`
 - Timeout: `TIMEOUT_S=180`
@@ -31,7 +31,7 @@ make build-arm64-linux-all
 Run the staged runtime coverage gate (defaults to all configured lanes; use `ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs` for the current Alpine-only baseline):
 
 ```bash
-make test-arm64-runtime-coverage REPORT_DIR=/workspace/tmp TIMEOUT_S=180 INSTALL_TIMEOUT_S=300
+make test-arm64-runtime-coverage REPORT_DIR=/workspace/tmp TIMEOUT_S=180 INSTALL_TIMEOUT_S=1200
 ```
 
 Run the focused Node/Bun perf table before and after executor optimization work. Latest baseline: **10 / 10 passing** at `/workspace/tmp/ish-arm64-node-bun-perf-20260515-213520.md`. To include opt-in ARM64 peephole generation counters, set `ISH_ARM64_FUSION_STATS=1`; the first counter-enabled run is `/workspace/tmp/ish-arm64-node-bun-perf-20260515-214650.md`. The table validates expected Node/Bun output as well as exit status. Latest Phase 3A refined reconnaissance-counter validation: fusion+block stats `/workspace/tmp/ish-arm64-node-bun-perf-20260516-044756.md` and default `/workspace/tmp/ish-arm64-node-bun-perf-20260516-044839.md`, both **10 / 10 passing**. `ISH_ARM64_BLOCK_STATS=1` is silent by default unless enabled and now reports slot, same-page chain-patch, and eager-prechain splits; the refined stats run showed about 6.1M chain attempts, 5.3M patches, an 87.7% patch rate, and about 76.0% same-page patched chains. `ISH_ARM64_EAGER_PRECHAIN=1` is a separate default-off Phase 3A experiment that prechains only same-page whole-block starts; promoted outgoing-only validation passed eager+stats Node/Bun at `/workspace/tmp/ish-arm64-node-bun-perf-20260516-071228.md`, default Node/Bun at `/workspace/tmp/ish-arm64-node-bun-perf-20260516-071258.md`, and eager Alpine runtime coverage **82 / 82** at `/workspace/tmp/ish-arm64-runtime-coverage-20260516-071511.md`. `ISH_ARM64_EAGER_PRECHAIN_INCOMING=1` is nested under eager prechain as a measurement/debug flag only. For iOS/App Store-facing wording, describe this path as a precompiled gadget executor/threaded interpreter dispatch cache rather than a JIT: it rewrites data slots to existing bundled code and does not generate executable memory, require RWX pages, or require `MAP_JIT`.
@@ -61,7 +61,7 @@ ISH_BIN=/path/to/ish \
 ROOTFS=/path/to/alpine-arm64-fakefs \
 REPORT_DIR=/workspace/tmp \
 TIMEOUT_S=180 \
-INSTALL_TIMEOUT_S=300 \
+INSTALL_TIMEOUT_S=1200 \
 ./tests/arm64/runtime-coverage.sh
 ```
 
@@ -130,7 +130,7 @@ This makes Rust a useful proxy for pthread/futex behavior, socket blocking seman
 | Python / Lua / Clojure | Passing | Version/eval smoke passes in the staged harness. |
 | Java/OpenJDK | Passing | OpenJDK 21 default mixed-mode `javac`/`java`, `-Xint`, and Java-equivalent Benchmarks Game probe pass. |
 | PyPy / Swift | Accounted for | Alpine 3.23 aarch64 currently has no packaged PyPy or Swift toolchain in the index. |
-| C# NativeAOT / `csharpaot` | Accounted for | The fakefs now has `dotnet9-sdk-aot` and `dotnet10-sdk-aot`; the default row reports `dotnet-aot-sdk-installed-publish-opt-in`. Full NativeAOT publish/run is deliberately gated behind `ISH_ARM64_DOTNET_AOT_PUBLISH=1` because it is much heavier than the core runtime smoke. |
+| C# NativeAOT / `csharpaot` | Accounted for / publish pending | The fakefs now has `dotnet9-sdk-aot` and `dotnet10-sdk-aot`; the default row reports `dotnet-aot-sdk-installed-publish-opt-in`. Full NativeAOT publish/run is deliberately gated behind `ISH_ARM64_DOTNET_AOT_PUBLISH=1` because it is much heavier than the core runtime smoke. Focused no-server publish probes get through restore but currently stall in the Roslyn `csc` phase, so NativeAOT execution is not yet promoted to the default gate. |
 | Rust | Passing | Direct `rustc`, optimized std runtime, `rustc --test`, and Cargo build/run/test pass without safety-valve or NETDIAG noise. |
 | Erlang | Passing | BEAM starts cleanly for `erl -version`; fuller module execution remains a follow-up lane. |
 | Zig | Passing | `zig version`, `zig build-obj`, and linked object execution through a C harness pass; `zig test` is excluded pending Alpine Zig compiler-rt `f16` behavior. |

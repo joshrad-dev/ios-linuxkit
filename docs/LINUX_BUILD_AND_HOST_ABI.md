@@ -140,7 +140,7 @@ Validation after the fix:
 
 - `make build-arm64-linux-all` passes.
 - 50 consecutive minimal Bun local `file:` install repro runs passed.
-- staged runtime coverage is now **49 / 49 passing** after subsequent syscall, signal, Java, barrier, Python/Lua/Clojure, Rust, Erlang, Zig, and runtime fixture additions.
+- staged runtime coverage is now **83 / 83 passing** after subsequent syscall, signal, Java, barrier, Python/Lua/Clojure, C# NativeAOT SDK availability, Rust, Erlang, Zig, and runtime fixture additions.
 
 
 ## JavaScriptCore GC compatibility shims
@@ -256,7 +256,7 @@ Directory reads now propagate or infer Linux `DT_*` values:
 
 Validation: a minimal Bun recursive `fs.cpSync` directory tree copy succeeds,
 PiClaw no longer logs the bootstrap `ENOTSUP ... copyfile` warning, and staged
-runtime coverage remains **49 / 49 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260515-132014.md`), with the later `fchmodat2(AT_EMPTY_PATH)` and high-address `MAP_NORESERVE` reservation-overlap probes included in the staged gate.
+runtime coverage remains **83 / 83 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260516-211305.md`), with the later `fchmodat2(AT_EMPTY_PATH)`, scheduler priority syscall, C# NativeAOT SDK-availability, and high-address `MAP_NORESERVE` reservation-overlap probes included in the staged gate.
 
 ## Blocking I/O and exit cleanup
 

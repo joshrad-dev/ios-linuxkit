@@ -306,13 +306,13 @@ to debug, not as cases to skip.
 
 Current Linux-host status from this pass:
 
-- Latest staged run: **49 / 49 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260515-132014.md`, `TIMEOUT_S=180`, `INSTALL_TIMEOUT_S=300`).
+- Latest staged run: **83 / 83 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260516-211305.md`, `TIMEOUT_S=180`, `INSTALL_TIMEOUT_S=1200`).
 - Latest Alpine npm AI CLI run: **16 / 16 passing** (`/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-200605.md`, unauthenticated install/startup/version/help probes, including community `grok-cli`).
-- Production package baseline: [ARM64_PRODUCTION_BASELINE.md](ARM64_PRODUCTION_BASELINE.md) (`alpine-arm64-fakefs` on Alpine 3.23.4 with OpenJDK 21.0.10_p7-r0; current local `master` after tagged validation point `arm64-openjdk21-prod-20260513-r6`; `origin` is configured for `rcarmo/ish-arm64`).
+- Production package baseline: [ARM64_PRODUCTION_BASELINE.md](ARM64_PRODUCTION_BASELINE.md) (`alpine-arm64-fakefs` on Alpine 3.23.4 with OpenJDK 21.0.10_p7-r0; current `master` after tagged validation point `arm64-openjdk21-prod-20260513-r6`; `origin` is configured for `rcarmo/ios-linuxkit`).
 - Non-trivial workload probes are grouped in [ARM64_WORKLOAD_SMOKE_TESTS.md](ARM64_WORKLOAD_SMOKE_TESTS.md): Bun/PiClaw, `rcarmo/go-gte`, and the Benchmarks Game rows.
 - C coverage is green: `gcc --version`, compile, and execute all pass.
 - SysV IPC coverage is green: shared memory and message queues work across `fork()`.
-- High-value syscall gap and socket ABI coverage is green: `signalfd4`, SysV semaphores, POSIX mqueues, `memfd_create`, `openat2`, `faccessat2`, `fchmodat2(AT_EMPTY_PATH)`, `preadv2`, `pwritev2`, `process_vm_*`, UDP `sendto`/`recvfrom`, TCP `listen`/`accept`, socketpair `sendmsg`/`recvmsg` with `SCM_RIGHTS`, `getsockname`, `setsockopt`, and `getsockopt` pass in the staged C fixture.
+- High-value syscall gap and socket ABI coverage is green: `signalfd4`, scheduler priority calls, SysV semaphores, POSIX mqueues, `memfd_create`, `openat2`, `faccessat2`, `fchmodat2(AT_EMPTY_PATH)`, `preadv2`, `pwritev2`, `process_vm_*`, UDP `sendto`/`recvfrom`, TCP `listen`/`accept`, socketpair `sendmsg`/`recvmsg` with `SCM_RIGHTS`, `getsockname`, `setsockopt`, and `getsockopt` pass in the staged C fixture.
 - ARM64 DC ZVA coverage is green: `DCZID_EL0` reports a 64-byte block and `dc zva` zeros the expected naturally aligned block.
 - ARM64 signal ucontext coverage is green: guest SIGSEGV handlers see `uc_mcontext` at offset 176 with correct PC/SP/LR, and null read faults reach handlers instead of being converted to zero loads.
 - ARM64 conditional-compare coverage is green: `CCMP`/`CCMN` with condition code 15 (`NV`) now follows AArch64 hardware and performs the compare instead of taking the false-immediate path.
@@ -334,6 +334,10 @@ Current Linux-host status from this pass:
   Java interpreter fallback, and `clojure.main` eval all pass.
 - PyPy and Swift availability probes are green by recording that Alpine 3.23
   aarch64 currently has no packaged PyPy or Swift toolchain in the index.
+- C# NativeAOT SDK availability is accounted for: `dotnet9-sdk-aot` and
+  `dotnet10-sdk-aot` are installed and the default gate reports
+  `dotnet-aot-sdk-installed-publish-opt-in`; full publish/run remains opt-in
+  because focused probes currently stall in Roslyn `csc` after restore.
 - Rust coverage is green for direct `rustc` and Cargo paths: version, compile/run, optimized std runtime, `rustc --test`, Cargo build/run/test, threads, atomics, channels, file I/O, TCP loopback, and child processes pass without safety-valve or NETDIAG noise.
 - Erlang coverage is green for BEAM startup/version (`erl -version`). Fuller
   `erl -noshell`/`erlc` module execution remains follow-up work.
