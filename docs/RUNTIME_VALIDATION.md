@@ -83,7 +83,7 @@ A passing core run writes `ish-arm64-runtime-coverage-YYYYMMDD-HHMMSS.md` under 
 | `python` / `lua` | version and eval smoke | Interpreted runtime startup, stdio, basic arithmetic/eval, and package availability assumptions. Lua is part of the original staged runtime matrix and remains covered by both version and eval rows. |
 | `java` / `clojure` | `javac` + default mixed-mode `java`, `java -Xint`, `clojure.main` eval | OpenJDK startup, mixed-mode compiler/JIT smoke, interpreter fallback, signal/ucontext compatibility, and Clojure-on-JVM startup. |
 | `pypy` / `swift` | Alpine aarch64 availability probes | Keeps unsupported toolchains explicit instead of silently skipping them. |
-| `csharpaot` | `csharpaot` build/run when installed, `dotnet publish -p:PublishAot=true` fallback when `dotnet` is installed, otherwise package-availability probe | Tracks .NET NativeAOT availability without installing the large SDK in the default gate. |
+| `csharpaot` | `csharpaot` build/run when installed; opt-in `dotnet publish -p:PublishAot=true` fallback with `ISH_ARM64_DOTNET_AOT_PUBLISH=1`; otherwise installed-SDK/package-availability probe | Tracks .NET NativeAOT availability while keeping the expensive SDK publish path out of the default fast gate. |
 | `rust` | `rustc --version`, direct compile/run, optimized std runtime, `rustc --test`, Cargo build/run/test | Rust toolchain startup/codegen plus std coverage for threads, atomics, channels, file I/O, TCP loopback, and child processes. |
 | `erlang` | `erl -version` | BEAM startup and helper-thread cleanup without exit safety-valve leaks. |
 | `zig` | `zig version`, `zig build-obj`, C harness link/run | Zig frontend/object generation plus ARM64 object execution through a linked native harness. |
@@ -93,7 +93,7 @@ A passing core run writes `ish-arm64-runtime-coverage-YYYYMMDD-HHMMSS.md` under 
 The C stage is the broadest low-level coverage lane:
 
 - **SysV IPC:** `shmget`/`shmat`/`shmdt`/`shmctl`, `msgget`/`msgsnd`/`msgrcv`/`msgctl` across `fork()`.
-- **High-value syscall gaps:** `signalfd4`, SysV semaphores, POSIX message queues, `memfd_create`, `openat2`, `faccessat2`, `fchmodat2(AT_EMPTY_PATH)`, `preadv2`, `pwritev2`, `process_vm_readv`, and `process_vm_writev`.
+- **High-value syscall gaps:** `signalfd4`, scheduler priority calls (`sched_setscheduler`/`sched_setparam`/`sched_getparam`/`sched_getscheduler`), SysV semaphores, POSIX message queues, `memfd_create`, `openat2`, `faccessat2`, `fchmodat2(AT_EMPTY_PATH)`, `preadv2`, `pwritev2`, `process_vm_readv`, and `process_vm_writev`.
 - **Socket ABI:** UDP `sendto`/`recvfrom`, TCP `listen`/`accept`, `getsockname`, `setsockopt`, `getsockopt`, socketpair `sendmsg`/`recvmsg`, and ARM64 `SCM_RIGHTS` fd passing with guest `cmsghdr` layout validation. UDP `recvfrom()` now accepts oversized source-address buffers, matching Linux behavior required by c-ares/libcurl DNS.
 - **ARM64 sysreg/instruction fixtures:** `DCZID_EL0`/`dc zva`, signal `ucontext_t`, per-thread `sigaltstack`, CCMP/CCMN condition-code-15 (`NV`), DMB/DSB/ISB barriers, and self-modifying-code invalidation.
 
@@ -130,7 +130,7 @@ This makes Rust a useful proxy for pthread/futex behavior, socket blocking seman
 | Python / Lua / Clojure | Passing | Version/eval smoke passes in the staged harness. |
 | Java/OpenJDK | Passing | OpenJDK 21 default mixed-mode `javac`/`java`, `-Xint`, and Java-equivalent Benchmarks Game probe pass. |
 | PyPy / Swift | Accounted for | Alpine 3.23 aarch64 currently has no packaged PyPy or Swift toolchain in the index. |
-| C# NativeAOT / `csharpaot` | Accounted for | The default gate probes `csharpaot`/`dotnet`; Alpine currently exposes `dotnet*-sdk-aot` packages but they are not installed in the fakefs, so the row reports `csharpaot-package-available-uninstalled`. |
+| C# NativeAOT / `csharpaot` | Accounted for | The fakefs now has `dotnet9-sdk-aot` and `dotnet10-sdk-aot`; the default row reports `dotnet-aot-sdk-installed-publish-opt-in`. Full NativeAOT publish/run is deliberately gated behind `ISH_ARM64_DOTNET_AOT_PUBLISH=1` because it is much heavier than the core runtime smoke. |
 | Rust | Passing | Direct `rustc`, optimized std runtime, `rustc --test`, and Cargo build/run/test pass without safety-valve or NETDIAG noise. |
 | Erlang | Passing | BEAM starts cleanly for `erl -version`; fuller module execution remains a follow-up lane. |
 | Zig | Passing | `zig version`, `zig build-obj`, and linked object execution through a C harness pass; `zig test` is excluded pending Alpine Zig compiler-rt `f16` behavior. |
