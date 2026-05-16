@@ -131,6 +131,7 @@
 		AA000502AF96D90D00FFB7A4 /* ghostty-web.js in Resources */ = {isa = PBXBuildFile; fileRef = AA000500AF96D90D00FFB7A4 /* ghostty-web.js */; };
 		AA000503AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = AA000501AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt */; };
 		AA000505AF96D90D00FFB7A4 /* ghostty-vt.wasm in Resources */ = {isa = PBXBuildFile; fileRef = AA000504AF96D90D00FFB7A4 /* ghostty-vt.wasm */; };
+		CC000002AF96D90D00FFB7A4 /* RootfsPatch.bundle in Resources */ = {isa = PBXBuildFile; fileRef = CC000001AF96D90D00FFB7A4 /* RootfsPatch.bundle */; };
 		FC000001AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000010AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf */; };
 		FC000002AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000011AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf */; };
 		FC000003AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = FC000012AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt */; };
@@ -215,6 +216,7 @@
 		BB000502AF96D90D00FFB7A4 /* ghostty-web.js in Resources */ = {isa = PBXBuildFile; fileRef = AA000500AF96D90D00FFB7A4 /* ghostty-web.js */; };
 		BB000503AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = AA000501AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt */; };
 		BB000505AF96D90D00FFB7A4 /* ghostty-vt.wasm in Resources */ = {isa = PBXBuildFile; fileRef = AA000504AF96D90D00FFB7A4 /* ghostty-vt.wasm */; };
+		CC000003AF96D90D00FFB7A4 /* RootfsPatch.bundle in Resources */ = {isa = PBXBuildFile; fileRef = CC000001AF96D90D00FFB7A4 /* RootfsPatch.bundle */; };
 		FC000004AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000010AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf */; };
 		FC000005AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000011AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf */; };
 		FC000006AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = FC000012AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt */; };
@@ -312,6 +314,7 @@
 		BBEF1A00268066D1001225BD /* ghostty-web.js in Resources */ = {isa = PBXBuildFile; fileRef = AA000500AF96D90D00FFB7A4 /* ghostty-web.js */; };
 		BBEF1A01268066D1001225BD /* ghostty-web-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = AA000501AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt */; };
 		BBEF1A02268066D1001225BD /* ghostty-vt.wasm in Resources */ = {isa = PBXBuildFile; fileRef = AA000504AF96D90D00FFB7A4 /* ghostty-vt.wasm */; };
+		CC000004AF96D90D00FFB7A4 /* RootfsPatch.bundle in Resources */ = {isa = PBXBuildFile; fileRef = CC000001AF96D90D00FFB7A4 /* RootfsPatch.bundle */; };
 		FC000007AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000010AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf */; };
 		FC000008AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000011AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf */; };
 		FC000009AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = FC000012AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt */; };
@@ -815,6 +818,7 @@
 		BBBDDF902CE00F8D0071F1F3 /* StaticLibLinuxUser.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = StaticLibLinuxUser.xcconfig; sourceTree = "<group>"; };
 		BBBDDF912CE0122F0071F1F3 /* emu_asbestos.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = emu_asbestos.c; path = linux/emu_asbestos.c; sourceTree = SOURCE_ROOT; };
 		BBBF7B5B2415CDBB00EC4C14 /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
+		CC000001AF96D90D00FFB7A4 /* RootfsPatch.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = RootfsPatch.bundle; sourceTree = "<group>"; };
 		BBBF9CBB27C217A6002A30F7 /* PasteboardDeviceLinux.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = PasteboardDeviceLinux.c; sourceTree = "<group>"; };
 		BBBF9CC027C441C0002A30F7 /* fix_path.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fix_path.h; sourceTree = "<group>"; };
 		BBBF9CC127C441C0002A30F7 /* fake-db.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "fake-db.h"; sourceTree = "<group>"; };
@@ -1199,6 +1203,7 @@
 				BB10E5C1248DB961009C7A74 /* Roots */,
 				BBFB557221586C6600DFE6DE /* Utilities */,
 				BBBF7B5B2415CDBB00EC4C14 /* Settings.bundle */,
+				CC000001AF96D90D00FFB7A4 /* RootfsPatch.bundle */,
 				BB792B5C1F96D90D00FFB7A4 /* Assets.xcassets */,
 				BB1B9A4123A5E92A00414052 /* Icons */,
 				BB792B5E1F96D90D00FFB7A4 /* LaunchScreen.storyboard */,
@@ -1941,6 +1946,7 @@
 				AA000502AF96D90D00FFB7A4 /* ghostty-web.js in Resources */,
 				AA000503AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt in Resources */,
 				AA000505AF96D90D00FFB7A4 /* ghostty-vt.wasm in Resources */,
+				CC000002AF96D90D00FFB7A4 /* RootfsPatch.bundle in Resources */,
 				FC000001AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
 				FC000002AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */,
 				FC000003AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */,
@@ -1988,6 +1994,7 @@
 				BB000502AF96D90D00FFB7A4 /* ghostty-web.js in Resources */,
 				BB000503AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt in Resources */,
 				BB000505AF96D90D00FFB7A4 /* ghostty-vt.wasm in Resources */,
+				CC000003AF96D90D00FFB7A4 /* RootfsPatch.bundle in Resources */,
 				FC000004AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
 				FC000005AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */,
 				FC000006AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */,
@@ -2042,6 +2049,7 @@
 				BBEF1A00268066D1001225BD /* ghostty-web.js in Resources */,
 				BBEF1A01268066D1001225BD /* ghostty-web-VENDORED.txt in Resources */,
 				BBEF1A02268066D1001225BD /* ghostty-vt.wasm in Resources */,
+				CC000004AF96D90D00FFB7A4 /* RootfsPatch.bundle in Resources */,
 				FC000007AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
 				FC000008AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */,
 				FC000009AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */,
