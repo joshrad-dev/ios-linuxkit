@@ -30,6 +30,7 @@ help:
 	@echo "                                      Run coverage against debug binary"
 	@echo "  make test-arm64-internal-continue-fixtures"
 	@echo "                                      Run opt-in ARM64 internal-continue first-call-site fixtures"
+	@echo "  make test-arm64-cli-corner-smoke   Run optional CLI/TUI/network/container corner-case smoke tests"
 	@echo "  make debian-arm64-fakefs           Build minimal Debian ARM64 fakefs lane"
 	@echo "  make test-arm64-ai-cli-runtime-coverage"
 	@echo "                                      Run second-stage AI CLI npm/Bun/pip install/startup coverage"
@@ -119,6 +120,16 @@ test-arm64-internal-continue-fixtures: build-arm64-linux
 	REPORT_DIR="$(REPORT_DIR)" \
 	TIMEOUT_S="$(TIMEOUT_S)" \
 	./tests/arm64/internal-continue-fixtures.sh
+
+.PHONY: test-arm64-cli-corner-smoke
+test-arm64-cli-corner-smoke: build-arm64-linux
+	ISH_BIN="$(CURDIR)/$(RELEASE_BUILD_DIR)/ish" \
+	ROOTFS="$(ROOTFS_DIR)" \
+	ROOTFS_LANES="$(ROOTFS_LANES)" \
+	REPORT_DIR="$(REPORT_DIR)" \
+	TIMEOUT_S="$(TIMEOUT_S)" \
+	INSTALL_TIMEOUT_S="$(INSTALL_TIMEOUT_S)" \
+	./tests/arm64/cli-corner-smoke.sh
 
 .PHONY: test-arm64-ai-cli-runtime-coverage
 test-arm64-ai-cli-runtime-coverage: build-arm64-linux $(DEBIAN_ROOTFS_DIR)

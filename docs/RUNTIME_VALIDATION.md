@@ -40,6 +40,14 @@ Run the focused Node/Bun perf table before and after executor optimization work.
 make test-arm64-node-bun-perf ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=180
 ```
 
+Run the CLI corner-case smoke suite for optional shells, TUI tools, network diagnostics, Docker CLI behavior, and HTTPS `git` clone coverage:
+
+```bash
+make test-arm64-cli-corner-smoke ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=240 INSTALL_TIMEOUT_S=1200
+```
+
+Latest CLI corner result: **26 / 26 passing** at `/workspace/tmp/ish-arm64-cli-corner-smoke-20260516-153555.md`. This includes `htop` and `btop` launched inside `tmux`, Docker `hello-world` as an explicit daemon-unavailable diagnostic, and a real `rcarmo/go-gte` HTTPS clone through the current `/etc/hosts` workaround while the libcurl/c-ares DNS path is being fixed.
+
 Run the separate AI CLI coverage suite:
 
 ```bash
@@ -72,7 +80,7 @@ A passing core run writes `ish-arm64-runtime-coverage-YYYYMMDD-HHMMSS.md` under 
 | `go` | `go version`, `go env`, `go tool compile`, `go run`, `go build`, `go test` | Go toolchain startup/codegen, module/test flow, signal-stack behavior, futex/thread scheduling, and larger mmap/runtime assumptions. |
 | `bun` | `bun --version`, local `file:` dependency install, TypeScript run, `bun test`, `bun build` | JavaScriptCore allocation, high-address mmap reservations, timers, package install filesystem behavior, and JSC GC compatibility shims. |
 | `node` | `node --version`, `node -e`, `npm --version`, `npm run` | V8/Node startup, npm process/filesystem paths, mmap reservation behavior, and quiet vector-I/O syscall coverage. |
-| `python` / `lua` | version and eval smoke | Interpreted runtime startup, stdio, basic arithmetic/eval, and package availability assumptions. |
+| `python` / `lua` | version and eval smoke | Interpreted runtime startup, stdio, basic arithmetic/eval, and package availability assumptions. Lua is part of the original staged runtime matrix and remains covered by both version and eval rows. |
 | `java` / `clojure` | `javac` + default mixed-mode `java`, `java -Xint`, `clojure.main` eval | OpenJDK startup, mixed-mode compiler/JIT smoke, interpreter fallback, signal/ucontext compatibility, and Clojure-on-JVM startup. |
 | `pypy` / `swift` | Alpine aarch64 availability probes | Keeps unsupported toolchains explicit instead of silently skipping them. |
 | `csharpaot` | `csharpaot` build/run when installed, `dotnet publish -p:PublishAot=true` fallback when `dotnet` is installed, otherwise package-availability probe | Tracks .NET NativeAOT availability without installing the large SDK in the default gate. |
