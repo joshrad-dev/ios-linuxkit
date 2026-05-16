@@ -151,15 +151,25 @@ static NSMapTable<NSUUID *, Terminal *> *terminalsByUUID;
     } else if ([message.name isEqualToString:@"resize"]) {
         [self syncWindowSize];
     } else if ([message.name isEqualToString:@"propUpdate"]) {
-        [self setValue:message.body[1] forKey:message.body[0]];
+        if (![message.body isKindOfClass:NSArray.class])
+            return;
+        NSArray *body = message.body;
+        if (body.count != 2 || ![body[0] isKindOfClass:NSString.class])
+            return;
+        NSString *property = body[0];
+        if ([property isEqualToString:@"applicationCursor"] && [body[1] isKindOfClass:NSNumber.class])
+            self.applicationCursor = [body[1] boolValue];
     }
 }
 
 - (void)syncWindowSize {
     [self.webView evaluateJavaScript:@"exports.getSize()" completionHandler:^(NSArray<NSNumber *> *dimensions, NSError *error) {
+        if (error != nil || ![dimensions isKindOfClass:NSArray.class] || dimensions.count < 2 ||
+            ![dimensions[0] isKindOfClass:NSNumber.class] || ![dimensions[1] isKindOfClass:NSNumber.class])
+            return;
         int cols = dimensions[0].intValue;
         int rows = dimensions[1].intValue;
-        if (self.tty == NULL)
+        if (cols <= 0 || rows <= 0 || self.tty == NULL)
             return;
 #if !ISH_LINUX
         lock(&self.tty->lock);
@@ -175,7 +185,7 @@ static NSMapTable<NSUUID *, Terminal *> *terminalsByUUID;
 
 - (void)setEnableVoiceOverAnnounce:(BOOL)enableVoiceOverAnnounce {
     _enableVoiceOverAnnounce = enableVoiceOverAnnounce;
-    [self.webView evaluateJavaScript:[NSString stringWithFormat:@"term.setAccessibilityEnabled(%@)",
+    [self.webView evaluateJavaScript:[NSString stringWithFormat:@"exports.setAccessibilityEnabled(%@)",
                                       enableVoiceOverAnnounce ? @"true" : @"false"]
                    completionHandler:nil];
 }

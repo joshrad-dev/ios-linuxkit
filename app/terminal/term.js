@@ -49,6 +49,7 @@ window.exports = {
     updateStyle,
     getCharacterSize,
     setUserGesture,
+    setAccessibilityEnabled,
 };
 
 window.addEventListener('load', async () => {
@@ -94,12 +95,14 @@ window.addEventListener('load', async () => {
         if (pendingStyle)
             applyStyle(pendingStyle);
 
-        const resizeObserver = new ResizeObserver(() => {
-            fit();
-            syncWindowSize();
-            syncScroll();
-        });
-        resizeObserver.observe(document.getElementById('terminal'));
+        if (typeof ResizeObserver === 'function') {
+            const resizeObserver = new ResizeObserver(() => {
+                fit();
+                syncWindowSize();
+                syncScroll();
+            });
+            resizeObserver.observe(document.getElementById('terminal'));
+        }
         window.addEventListener('resize', () => {
             fit();
             syncWindowSize();
@@ -233,6 +236,12 @@ function getCharacterSize() {
 
 function setUserGesture() {
     // hterm-specific accessibility hook; no equivalent is required for ghostty-web.
+}
+
+function setAccessibilityEnabled(_enabled) {
+    // hterm exposed a screen-reader toggle. Ghostty-Web does not currently need
+    // one, but Terminal.m still calls through this bridge when views attach or
+    // detach. Keep the endpoint explicit so those calls do not throw in WKWebView.
 }
 
 function syncWindowSize() {
