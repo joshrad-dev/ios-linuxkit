@@ -43,6 +43,15 @@ __thread int ish_thread_marker;
 extern int current_pid(void);
 
 #ifdef GUEST_ARM64
+__attribute__((weak)) void *mem_ptr(struct mem *mem, addr_t addr, int type) {
+    (void) mem;
+    (void) addr;
+    (void) type;
+    return NULL;
+}
+#endif
+
+#ifdef GUEST_ARM64
 static bool arm64_block_stats_enabled;
 static bool arm64_block_stats_dumped;
 static bool arm64_eager_prechain_enabled;
