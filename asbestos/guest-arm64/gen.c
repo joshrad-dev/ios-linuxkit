@@ -50,6 +50,7 @@ static uint64_t arm64_fusion_addsub_ldr8_count;
 static uint64_t arm64_fusion_addsub_str64_count;
 static uint64_t arm64_fusion_addsub_str32_count;
 static uint64_t arm64_fusion_addsub_str16_count;
+static uint64_t arm64_fusion_addsub_str8_count;
 static uint64_t arm64_fusion_ldr64_cbz64_count;
 static uint64_t arm64_fusion_ldr32_cbz32_count;
 static uint64_t arm64_fusion_ldr16_cbz32_count;
@@ -65,7 +66,7 @@ void arm64_fusion_stats_dump_if_enabled(void) {
         return;
     arm64_fusion_stats_dumped = true;
     fprintf(stderr,
-            "ARM64_FUSION_STATS cmp_bcond=%llu subs_bcond=%llu adrp_add=%llu adrp_ldr64=%llu addsub_fast=%llu addsub_cbz=%llu addsub_ldr64=%llu addsub_ldr32=%llu addsub_ldr16=%llu addsub_ldr8=%llu addsub_str64=%llu addsub_str32=%llu addsub_str16=%llu ldr64_cbz64=%llu ldr32_cbz32=%llu ldr16_cbz32=%llu ldr8_cbz32=%llu addsub_ldr_cand=%llu addsub_str_cand=%llu ldr_cbz_cand=%llu ldr64_cbz64_cand=%llu\n",
+            "ARM64_FUSION_STATS cmp_bcond=%llu subs_bcond=%llu adrp_add=%llu adrp_ldr64=%llu addsub_fast=%llu addsub_cbz=%llu addsub_ldr64=%llu addsub_ldr32=%llu addsub_ldr16=%llu addsub_ldr8=%llu addsub_str64=%llu addsub_str32=%llu addsub_str16=%llu addsub_str8=%llu ldr64_cbz64=%llu ldr32_cbz32=%llu ldr16_cbz32=%llu ldr8_cbz32=%llu addsub_ldr_cand=%llu addsub_str_cand=%llu ldr_cbz_cand=%llu ldr64_cbz64_cand=%llu\n",
             (unsigned long long)arm64_fusion_cmp_bcond_count,
             (unsigned long long)arm64_fusion_subs_bcond_count,
             (unsigned long long)arm64_fusion_adrp_add_count,
@@ -79,6 +80,7 @@ void arm64_fusion_stats_dump_if_enabled(void) {
             (unsigned long long)arm64_fusion_addsub_str64_count,
             (unsigned long long)arm64_fusion_addsub_str32_count,
             (unsigned long long)arm64_fusion_addsub_str16_count,
+            (unsigned long long)arm64_fusion_addsub_str8_count,
             (unsigned long long)arm64_fusion_ldr64_cbz64_count,
             (unsigned long long)arm64_fusion_ldr32_cbz32_count,
             (unsigned long long)arm64_fusion_ldr16_cbz32_count,
@@ -185,6 +187,7 @@ extern void gadget_fused_addsub_ldr8_imm(void);
 extern void gadget_fused_addsub_str64_imm(void);
 extern void gadget_fused_addsub_str32_imm(void);
 extern void gadget_fused_addsub_str16_imm(void);
+extern void gadget_fused_addsub_str8_imm(void);
 extern void gadget_fused_ldr64_cbz_imm(void);
 extern void gadget_fused_ldr64_cbnz_imm(void);
 extern void gadget_fused_ldr32_cbz_imm(void);
@@ -1635,6 +1638,35 @@ static int try_fuse_addsub_str16(struct gen_state *state, uint32_t op, uint32_t 
     return 1;
 }
 
+static int try_fuse_addsub_str8(struct gen_state *state, uint32_t op, uint32_t rd,
+                                uint32_t rn, uint32_t imm12) {
+    if (PAGE(state->orig_ip) != PAGE(state->ip))
+        return -1;
+
+    uint32_t next_insn;
+    if (!gen_peek_next_insn(state, &next_insn))
+        return -1;
+
+    bool is_load, sign_extend;
+    uint32_t mem_rn, mem_rt, mem_size;
+    if (!arm64_decode_int_unsigned_imm_ldst(next_insn, &is_load, &sign_extend, &mem_rn, &mem_rt, &mem_size))
+        return -1;
+    if (is_load || sign_extend || mem_size != 0 || mem_rn != rd || mem_rt == 31)
+        return -1;
+
+    uint32_t str_imm12 = (next_insn >> 10) & 0xfff;
+    addr_t str_pc = state->ip;
+    state->ip += 4;
+
+    ARM64_FUSION_STAT_INC(arm64_fusion_addsub_str8_count);
+    gen(state, (unsigned long)gadget_fused_addsub_str8_imm);
+    gen(state, rd | (rn << 8) | ((uint64_t)imm12 << 16) |
+               ((uint64_t)op << 28) | ((uint64_t)mem_rt << 32) |
+               ((uint64_t)str_imm12 << 40));
+    gen(state, (unsigned long)str_pc);
+    return 1;
+}
+
 static void count_ldr_cbz_candidate(struct gen_state *state, uint32_t rt,
                                      uint32_t size, bool sign_extend) {
     uint32_t next_insn;
@@ -1881,6 +1913,8 @@ static int gen_dp_imm(struct gen_state *state, uint32_t insn) {
             if (sf && try_fuse_addsub_str32(state, op, rd, rn, imm12) == 1)
                 return 1;
             if (sf && try_fuse_addsub_str16(state, op, rd, rn, imm12) == 1)
+                return 1;
+            if (sf && try_fuse_addsub_str8(state, op, rd, rn, imm12) == 1)
                 return 1;
         }
 

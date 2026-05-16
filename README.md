@@ -6,17 +6,17 @@ The upstream/original README is preserved as [ORIGINAL_README.md](ORIGINAL_READM
 
 ## Current validation baseline
 
-Latest staged runtime report: **49 / 49 passing**
+Latest staged runtime report: **74 / 74 passing**
 
-- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260515-132014.md`
+- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-023403.md`
 - Binary: `build-arm64-linux/ish`
 - Rootfs: `alpine-arm64-fakefs`
 - Timeout: `TIMEOUT_S=180`
-- Install timeout: `INSTALL_TIMEOUT_S=300`
+- Install timeout: `INSTALL_TIMEOUT_S=1200`
 - `SAFETY-VALVE` diagnostics in report: **0**
 - `NETDIAG` diagnostics in report: **0**
 
-AI CLI runtime coverage is tracked as a separate second-stage suite because it installs fast-moving agent packages and should not contaminate the stable 49-test core gate. Latest Alpine npm-only report: **16 / 16 passing** at `/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-200605.md`, now including the community `grok-cli` Grok/xAI proxy wrapper. The Claude Code standalone Bun binary crash was traced to high-address `MAP_NORESERVE` reservation overlap; high-hole allocation and alignment are now reservation-aware. Debian AI CLI remains a background lane while glibc thread creation is still blocked by `pthread_create()`/libuv assertions.
+AI CLI runtime coverage is tracked as a separate second-stage suite because it installs fast-moving agent packages and should not contaminate the stable core gate. Latest Alpine npm-only report: **16 / 16 passing** at `/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-200605.md`, now including the community `grok-cli` Grok/xAI proxy wrapper. The Claude Code standalone Bun binary crash was traced to high-address `MAP_NORESERVE` reservation overlap; high-hole allocation and alignment are now reservation-aware. Debian AI CLI remains a background lane while glibc thread creation is still blocked by `pthread_create()`/libuv assertions.
 
 This README reflects the validation sequence after tagged point `arm64-openjdk21-prod-20260513-r6`, including the later Rust/Cargo and socket ABI audit fixes, lane-aware runtime coverage, `fchmodat2(AT_EMPTY_PATH)`, reservation-aware high-address `MAP_NORESERVE` handling, and the separate AI CLI coverage harness.
 
@@ -34,7 +34,7 @@ Run the staged runtime coverage gate (defaults to all configured lanes; use `ROO
 make test-arm64-runtime-coverage REPORT_DIR=/workspace/tmp TIMEOUT_S=180 INSTALL_TIMEOUT_S=300
 ```
 
-Run the focused Node/Bun perf table before and after executor optimization work. Latest baseline: **10 / 10 passing** at `/workspace/tmp/ish-arm64-node-bun-perf-20260515-213520.md`. To include opt-in ARM64 peephole generation counters, set `ISH_ARM64_FUSION_STATS=1`; the first counter-enabled run is `/workspace/tmp/ish-arm64-node-bun-perf-20260515-214650.md`. The table validates expected Node/Bun output as well as exit status. Latest Phase 2K `ADD/SUB + STRH` validation: stats `/workspace/tmp/ish-arm64-node-bun-perf-20260516-021441.md` and default `/workspace/tmp/ish-arm64-node-bun-perf-20260516-021533.md`, both **10 / 10 passing**.
+Run the focused Node/Bun perf table before and after executor optimization work. Latest baseline: **10 / 10 passing** at `/workspace/tmp/ish-arm64-node-bun-perf-20260515-213520.md`. To include opt-in ARM64 peephole generation counters, set `ISH_ARM64_FUSION_STATS=1`; the first counter-enabled run is `/workspace/tmp/ish-arm64-node-bun-perf-20260515-214650.md`. The table validates expected Node/Bun output as well as exit status. Latest Phase 2L `ADD/SUB + STRB` validation: stats `/workspace/tmp/ish-arm64-node-bun-perf-20260516-023219.md` and default `/workspace/tmp/ish-arm64-node-bun-perf-20260516-023314.md`, both **10 / 10 passing**.
 
 ```bash
 make test-arm64-node-bun-perf ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=180
