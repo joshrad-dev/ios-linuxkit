@@ -1,4 +1,4 @@
-# ARM64 gadget fusion and trace/superblock plan
+# ios-linuxkit ARM64 gadget fusion and trace/superblock plan
 
 Date: 2026-05-15
 
@@ -387,6 +387,17 @@ Incoming-prechain predecessor-index design notes:
   3. when a target block is inserted, consume only same-page pending entries whose fake target exactly matches `block->addr`;
   4. when a page is invalidated, the normal disconnect path must remove both pending entries and patched back-references without leaving stale list nodes.
 - Keep all pending-index experiments opt-in behind `ISH_ARM64_EAGER_PRECHAIN_INCOMING=1` until a targeted invalidation fixture and the full Alpine runtime coverage pass without timeout regressions.
+
+True-superblock representation scoping:
+
+- Do not make existing `jump_ip` slots point at interior offsets. `inline_chain`, `fiber_ret_chain`, RET-cache continuations, poke exits, and `LOCAL_last_block` recovery all treat bit-63-clear targets as `fiber_block->code` starts and recover the owning block by subtracting `FIBER_BLOCK_code`.
+- Preferred Phase 3B representation is an internal-continue gadget path, not fake `fiber_block` segment headers. Internal superblock branches should use new operands that are never exposed as normal chained pointers, for example `[guest_pc][internal_code_offset]` patched at `gen_end` to an absolute code-stream pointer. The gadget sets `CPU_pc` to `guest_pc`, sets `_pc` to the internal continuation, and `gret`s.
+- External exits from a superblock must continue using the existing fake-IP/`block->code` mechanism so invalidation, `jumps_from`, ret-cache, poke/timer exits, and dynamic chain repair keep their current invariants. Internal continuation pointers must not be stored in `jump_ip`, ret-cache return continuations, or any structure consumed by `fiber_ret_chain`.
+- Generation should store internal continuation targets as offsets while the block is still reallocatable, then patch them after final allocation in `gen_end`. This avoids stale absolute pointers if `gen()` grows the code array.
+- Phase 3B should start with same-page, single-owner blocks only. `block->addr` remains the public entry guest PC; `block->end_addr` and page-list membership must conservatively cover every guest byte compiled into the superblock. Multi-page or discontinuous superblocks need explicit page back-references before they are allowed.
+- Precise fault-PC rule: every faultable memory instruction inside an internal segment must still be preceded by `gadget_set_jit_saved_pc` for that exact guest instruction. Internal branch gadgets may update `CPU_pc` for observability, but signal recovery must continue to report the faulting instruction, not the superblock entry.
+- Scheduling rule: because internal continues reduce normal block-transition checks, keep initial superblocks short and preserve existing syscall/indirect/barrier/atomic/page-boundary stops. Add a dedicated timer/poke budget only if superblocks become long enough to delay existing checks.
+- Required fixtures before any true-superblock code lands: same-page invalidation of a patched second segment, precise load/store fault PC in a second segment, branch-taken and fallthrough internal continuations, ret-cache unaffected by an internal call-adjacent segment, and default-off iOS/App Store posture unchanged.
 
 ## Phase 4: hot traces
 

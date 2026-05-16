@@ -1,10 +1,10 @@
-# ARM64 iSH workload smoke tests
+# ios-linuxkit ARM64 workload smoke tests
 
 Updated: 2026-05-15
 
 ## Purpose
 
-This file is the single index for non-trivial workloads we use to harden the ARM64 iSH Linux-host fakefs. The goal is to move beyond tiny instruction reproducers and run real language runtimes, package managers, compilers, filesystem walkers, network servers, and SIMD-heavy applications that resemble what users actually do inside iSH.
+This file is the single index for non-trivial workloads we use to harden the ios-linuxkit ARM64 Linux-host fakefs. The goal is to move beyond tiny instruction reproducers and run real language runtimes, package managers, compilers, filesystem walkers, network servers, and SIMD-heavy applications that resemble what users actually do inside iSH.
 
 Current issue disposition and syscall coverage appraisal: [ARM64_SMOKE_ISSUES_AND_SYSCALL_COVERAGE.md](ARM64_SMOKE_ISSUES_AND_SYSCALL_COVERAGE.md).
 
@@ -68,7 +68,7 @@ report: /workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-200605.md
 Important findings:
 
 - Codex, Pi help, GitHub Copilot, OpenCode `help`, Gemini startup/help, and community `grok-cli` startup/help paths run in the Alpine npm lane.
-- OpenCode's `--help` path can hang under iSH/Alpine, but the equivalent `opencode help` command prints usage and exits; the harness probes that subcommand first.
+- OpenCode's `--help` path can hang under ios-linuxkit/Alpine, but the equivalent `opencode help` command prints usage and exits; the harness probes that subcommand first.
 - Pi's optional `koffi` dependency probes a prebuilt native module during install and can emit an illegal-instruction diagnostic even though npm treats the optional dependency as skippable. The harness now installs Pi with `--omit=optional` for this unauthenticated startup smoke while still running `pi --help`.
 - Claude Code's standalone Bun binary now passes the unauthenticated version smoke. The crash was caused by high-address `MAP_NORESERVE` reservations being invisible to high-hole allocation and later alignment checks, allowing medium JSC/Bun mappings to overlap an existing lazy reservation.
 - Community `grok-cli` is not an official xAI package. It depends on `keytar`, so the Alpine harness disables install scripts and stubs async keychain methods for the unauthenticated help smoke, avoiding native keychain access and glibc prebuilt relocation failures.

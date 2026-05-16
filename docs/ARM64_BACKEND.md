@@ -1,8 +1,8 @@
-# iSH ARM64 — Linux on iOS via Native Threaded-Code Interpreter
+# ios-linuxkit ARM64 backend — Linux on iOS via native threaded-code interpreter
 
-**Fork of [ish-app/ish](https://github.com/ish-app/ish)** — a userspace Linux emulator for iOS.
+`ios-linuxkit` builds on the `ish-arm64` fork of [ish-app/ish](https://github.com/ish-app/ish), a userspace Linux emulator for iOS.
 
-This fork adds a **native ARM64 guest backend** to upstream iSH's threaded-code interpreter
+The `ish-arm64` work added a **native ARM64 guest backend** to upstream iSH's threaded-code interpreter
 (*Asbestos*, formerly called *jit* — renamed upstream in 2024 because it doesn't actually emit
 machine code). The new backend emulates AArch64 Linux on Apple Silicon, running alongside
 the original x86 (i386) guest backend. The result is a dramatically faster and more
@@ -13,7 +13,7 @@ CLI tools** directly on iPhone and iPad.
 >
 > This engine is shipping in **[OpenMinis](https://openminis.app)** as the **Agent Shell Sandbox**,
 > where it has been **stably used by over 10,000 users** to run Linux tools and shell workloads
-> on iOS. The numbers and stability claims in this README are grounded in that real-world
+> on iOS. The numbers and stability claims in this document are grounded in that real-world
 > deployment, not just synthetic benchmarks.
 
 > **Naming note**: *Asbestos* is the upstream project's name for its threaded-code
@@ -50,7 +50,7 @@ fundamental limits:
 
 ```
 +--------------------------------------------------------------+
-|  iOS App (iSH ARM64)                                         |
+|  iOS App (ios-linuxkit)                                         |
 |                                                              |
 |  +--------------------------------------------------------+  |
 |  |  Asbestos (threaded-code interpreter)                  |  |
@@ -308,8 +308,8 @@ Current Linux-host status from this pass:
 
 - Latest staged run: **49 / 49 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260515-132014.md`, `TIMEOUT_S=180`, `INSTALL_TIMEOUT_S=300`).
 - Latest Alpine npm AI CLI run: **16 / 16 passing** (`/workspace/tmp/ish-arm64-ai-cli-runtime-coverage-20260515-200605.md`, unauthenticated install/startup/version/help probes, including community `grok-cli`).
-- Production package baseline: [docs/ARM64_PRODUCTION_BASELINE.md](docs/ARM64_PRODUCTION_BASELINE.md) (`alpine-arm64-fakefs` on Alpine 3.23.4 with OpenJDK 21.0.10_p7-r0; current local `master` after tagged validation point `arm64-openjdk21-prod-20260513-r6`; `origin` is configured for `rcarmo/ish-arm64`).
-- Non-trivial workload probes are grouped in [docs/ARM64_WORKLOAD_SMOKE_TESTS.md](docs/ARM64_WORKLOAD_SMOKE_TESTS.md): Bun/PiClaw, `rcarmo/go-gte`, and the Benchmarks Game rows.
+- Production package baseline: [ARM64_PRODUCTION_BASELINE.md](ARM64_PRODUCTION_BASELINE.md) (`alpine-arm64-fakefs` on Alpine 3.23.4 with OpenJDK 21.0.10_p7-r0; current local `master` after tagged validation point `arm64-openjdk21-prod-20260513-r6`; `origin` is configured for `rcarmo/ish-arm64`).
+- Non-trivial workload probes are grouped in [ARM64_WORKLOAD_SMOKE_TESTS.md](ARM64_WORKLOAD_SMOKE_TESTS.md): Bun/PiClaw, `rcarmo/go-gte`, and the Benchmarks Game rows.
 - C coverage is green: `gcc --version`, compile, and execute all pass.
 - SysV IPC coverage is green: shared memory and message queues work across `fork()`.
 - High-value syscall gap and socket ABI coverage is green: `signalfd4`, SysV semaphores, POSIX mqueues, `memfd_create`, `openat2`, `faccessat2`, `fchmodat2(AT_EMPTY_PATH)`, `preadv2`, `pwritev2`, `process_vm_*`, UDP `sendto`/`recvfrom`, TCP `listen`/`accept`, socketpair `sendmsg`/`recvmsg` with `SCM_RIGHTS`, `getsockname`, `setsockopt`, and `getsockopt` pass in the staged C fixture.
@@ -428,7 +428,7 @@ See also:
 
 Measured with `benchmark/run.sh` on macOS 26.4.1 / Apple Silicon using guest-side
 timing (startup overhead excluded). Full details in
-**[benchmark/BENCHMARK_PERF.md](benchmark/BENCHMARK_PERF.md)**.
+**[benchmark/BENCHMARK_PERF.md](../benchmark/BENCHMARK_PERF.md)**.
 
 ### Overhead vs Native (by workload)
 
@@ -459,7 +459,7 @@ timing (startup overhead excluded). Full details in
 205 tests across 18 categories (Core OS, FileOps, Text, Build, Python, Node.js, Go/Rust/Perl/…,
 Network, VCS, Editors, Shell, DB, Media, Crypto, SysMon, Debug, PkgMgr, Signal). Both
 architectures tested under fakefs with the same installed package set. Full report:
-**[benchmark/BENCHMARK_COMPAT.md](benchmark/BENCHMARK_COMPAT.md)**.
+**[benchmark/BENCHMARK_COMPAT.md](../benchmark/BENCHMARK_COMPAT.md)**.
 
 | Architecture | Pass | Fail | Rate |
 |---|:---:|:---:|:---:|
@@ -564,4 +564,4 @@ iSH/
 
 ## License
 
-Same as upstream iSH. See [LICENSE](LICENSE.md).
+Same as upstream iSH. See [LICENSE](../LICENSE.md).

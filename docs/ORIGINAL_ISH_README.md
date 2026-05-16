@@ -29,8 +29,8 @@
 > **Performance (ARM64 vs x86, compute-heavy):** C `int_arith_2M` **12x faster**,
 > Python `fib(30)` **9.2x faster**, `sum(1M)` **10.2x faster**, shell `seq+awk 100K` **7.2x faster**.
 >
-> **Full docs:** [README_arm64.md](README_arm64.md) · [中文版](README_arm64_zh.md) ·
-> [Performance report](benchmark/BENCHMARK_PERF.md) · [Compatibility report](benchmark/BENCHMARK_COMPAT.md)
+> **Full docs:** [ARM64 backend](ARM64_BACKEND.md) · [中文版](ARM64_BACKEND_ZH.md) ·
+> [Performance report](../benchmark/BENCHMARK_PERF.md) · [Compatibility report](../benchmark/BENCHMARK_COMPAT.md)
 >
 > ---
 
