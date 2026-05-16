@@ -168,7 +168,7 @@ bool (*remove_user_default)(const char *name);
             kPreferenceCursorStyleKey: @(CursorStyleBlock),
             kPreferenceHideStatusBarKey: @(NO),
             kPreferenceColorSchemeKey: @(ColorSchemeMatchSystem),
-            kPreferenceThemeKey: @"Ghostty Default",
+            kPreferenceThemeKey: @"xterm",
             kHostnameOverrideKey: UIDevice.currentDevice.name,
         }];
         [_defaults registerDefaults:@{
@@ -389,7 +389,7 @@ bool (*remove_user_default)(const char *name);
     if ((theme = [Theme themeForName:userTheme includingDefaultThemes:YES])) {
         self.theme = theme;
     } else {
-        self.theme = Theme.defaultThemes.lastObject;
+        self.theme = Theme.defaultThemes.firstObject;
     }
 }
 
