@@ -1,5 +1,7 @@
 # ios-linuxkit
 
+![](docs/icon-256.png)
+
 `ios-linuxkit` is a Linux runtime for iOS developers. It packages the ARM64 iSH work into a developer-focused environment for running shells, compilers, package managers, language runtimes, and agent/CLI tooling on iPhone and iPad.
 
 The project is based on the `ish-arm64` branch of [iSH](https://ish.app/), but the current focus is no longer just ARM64 bring-up. The emphasis is a practical iOS Linux runtime backed by extensive runtime testing, workload smoke tests, and stabilization of the ARM64 threaded-code executor, Linux syscall layer, filesystem behavior, networking, signals, and modern runtime compatibility.
