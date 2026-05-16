@@ -222,6 +222,19 @@ Phase 2I implementation tranche:
   - Default/no-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-013858.md`, **10 / 10 passing**, no stats output.
   - Core Alpine runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-013939.md`, **68 / 68 passing**.
 
+Phase 2J implementation tranche:
+
+- Implemented narrow adjacent same-page `ADD/SUB (imm, 64-bit, no flags) + STR Wt, [Xd, #imm]` fusion for non-SP address-generation registers and non-XZR store sources.
+- The fused gadget stores the ADD/SUB result before the STR, writes the STR guest PC into `LOCAL_jit_saved_pc` before the faultable memory access, reads the store source after the ADD/SUB side effect, and writes the low 32 bits for the architectural W store.
+- Added runtime fixtures:
+  - `arm64 addsub str32 fusion` for successful stores, including `rt == rd` ordering.
+  - `arm64 fused addsub str32 fault pc` for precise STR fault PC and visible pre-fault ADD side effect in the guest signal context.
+- Validation reports:
+  - Targeted success/fault smokes: `addsub-str32-fusion-ok 9abcdef0 efffd014`, `fused-addsub-str32-fault-ok`.
+  - Counter-enabled Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-015706.md`, **10 / 10 passing**. Representative fusion hits: Node eval `addsub_str32=326`, Node JSON `288`, Bun eval `6`, Bun JSON `10`.
+  - Default/no-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-015757.md`, **10 / 10 passing**, no stats output.
+  - Core Alpine runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-015841.md`, **70 / 70 passing**.
+
 ## Phase 3: linear superblocks
 
 Phase 3 should wait until the Phase 1 fusion tranche is stable across repeated Node/Bun and core runtime runs. Initial design remains same-page and conservative:
