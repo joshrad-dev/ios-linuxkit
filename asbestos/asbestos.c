@@ -773,7 +773,11 @@ static void fiber_block_disconnect(struct asbestos *asbestos, struct fiber_block
     list_remove(&block->chain);
     for (int i = 0; i <= 1; i++) {
         list_remove_safe(&block->page[i]);
-        list_remove_safe(&block->jumps_from_links[i]);
+        if (!list_null(&block->jumps_from_links[i])) {
+            if (block->jump_ip[i] != NULL)
+                *block->jump_ip[i] = block->old_jump_ip[i];
+            list_remove(&block->jumps_from_links[i]);
+        }
 
         struct fiber_block *prev_block, *tmp;
         list_for_each_entry_safe(&block->jumps_from[i], prev_block, tmp, jumps_from_links[i]) {
