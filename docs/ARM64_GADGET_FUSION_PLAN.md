@@ -376,6 +376,18 @@ Phase 3A eager same-page prechain experiment:
   - Default/no-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-071258.md`, **10 / 10 passing**, no stats output.
   - Promoted outgoing-only eager Alpine runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-071511.md`, **82 / 82 passing**.
 
+Incoming-prechain predecessor-index design notes:
+
+- Do not extend the current scan-based incoming experiment into production. Even with a small scan limit it is workload-sensitive, and the unbounded version proved it can turn dense compile pages into a compile-time timeout problem.
+- A cheap incoming prechain needs an explicit pending-predecessor index keyed by same-page target guest PC, not a page-list scan. The index should store per-source-slot entries for only still-fake `jump_ip` slots.
+- Do not reuse `jumps_from_links[2]` for pending entries. Those links are already owned by real patched target `jumps_from[i]` lists after a slot is chained. A pending index needs separate per-slot link storage or a small sidecar allocation so cleanup can distinguish “pending fake slot” from “patched back-reference”.
+- Required cleanup points before implementation:
+  1. when a source slot is patched, remove its pending entry before adding the existing `jumps_from_links[i]` back-reference;
+  2. when a source block is disconnected/jetsam'd, remove any remaining pending entries for both slots;
+  3. when a target block is inserted, consume only same-page pending entries whose fake target exactly matches `block->addr`;
+  4. when a page is invalidated, the normal disconnect path must remove both pending entries and patched back-references without leaving stale list nodes.
+- Keep all pending-index experiments opt-in behind `ISH_ARM64_EAGER_PRECHAIN_INCOMING=1` until a targeted invalidation fixture and the full Alpine runtime coverage pass without timeout regressions.
+
 ## Phase 4: hot traces
 
 Only after superblocks are stable:
