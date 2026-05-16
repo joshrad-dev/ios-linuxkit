@@ -32,6 +32,27 @@ append_row() {
     REPORT_ROWS+="| $name | $status | ${detail//$'\n'/<br>} |"$'\n'
 }
 
+run_audit_test() {
+    local name="$1"
+    local func="$2"
+    local expect_text="$3"
+    local out="$HOST_TMP/${name//[^A-Za-z0-9_]/_}.out"
+
+    TOTAL_COUNT=$((TOTAL_COUNT + 1))
+    printf '[internal-continue] %s ... ' "$name"
+
+    if "$func" >"$out" 2>&1 && grep -qx "$expect_text" "$out"; then
+        PASS_COUNT=$((PASS_COUNT + 1))
+        echo PASS
+        append_row "$name" PASS "$(sed -n '1,8p' "$out" | sed 's/|/\\|/g')"
+        return
+    fi
+
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    echo FAIL
+    append_row "$name" FAIL "$(sed -n '1,20p' "$out" | sed 's/|/\\|/g')"
+}
+
 run_host_test() {
     local name="$1"
     local env_spec="$2"
@@ -81,6 +102,20 @@ run_host_test() {
     FAIL_COUNT=$((FAIL_COUNT + 1))
     echo FAIL
     append_row "$name" FAIL "$(sed -n '1,20p' "$out" | sed 's/|/\\|/g')"
+}
+
+source_default_off_audit() {
+    cd "$PROJECT_DIR"
+
+    grep -Fq 'arm64_internal_continue_set_enabled_from_env(getenv("ISH_ARM64_INTERNAL_CONTINUE"))' main.c
+    grep -Fq "arm64_internal_continue_enabled = env != NULL && env[0] != '\\0' && strcmp(env, \"0\") != 0;" asbestos/guest-arm64/gen.c
+
+    if grep -R "ISH_ARM64_INTERNAL_CONTINUE\|ARM64_INTERNAL_CONTINUE" app --include='*.m' --include='*.h' --include='*.c' --include='*.mm' --include='*.xcconfig' --include='*.plist' >/dev/null 2>&1; then
+        echo "internal-continue env leaked into app config/source" >&2
+        return 1
+    fi
+
+    printf 'ios-default-off-audit-ok\n'
 }
 
 push_tree() {
@@ -295,6 +330,8 @@ EOF_C
 main() {
     [ -x "$ISH_BIN" ] || { echo "missing ish binary: $ISH_BIN" >&2; exit 1; }
     [ -d "$ROOTFS" ] || { echo "missing rootfs: $ROOTFS" >&2; exit 1; }
+
+    run_audit_test "source/iOS default-off audit" source_default_off_audit "ios-default-off-audit-ok"
 
     prepare_fixture
     push_tree "$HOST_TMP/src" "$GUEST_WORK"
