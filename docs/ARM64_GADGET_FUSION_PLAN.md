@@ -351,6 +351,16 @@ Phase 3 should wait until the Phase 1/2 fusion tranche is stable across repeated
 
 Use the existing page-index invalidation path: every page touched by a superblock must invalidate that superblock. For Phase 3A, require a single touched page and no new invalidation data structure. For Phase 3B, allow multi-page superblocks only after adding an explicit page-list/back-reference invalidation test.
 
+Phase 3A scoping decision after refined counters:
+
+- Do **not** prototype arbitrary internal superblock branch targets by writing raw pointers into existing `jump_ip` slots. Current `inline_chain` and `fiber_ret_chain` assume every bit-63-clear chain pointer is exactly `block->code`, not an interior gadget pointer. They recover `CPU_pc` and `LOCAL_last_block` by subtracting `FIBER_BLOCK_code` and reading `FIBER_BLOCK_addr`; an interior pointer would make those values wrong and could corrupt later chaining/invalidation behavior.
+- A safe same-page superblock representation therefore needs one of these before code generation changes:
+  1. a per-segment header/table so internal code pointers can map back to the correct guest PC and owning block;
+  2. dedicated internal branch/continue gadgets that set `CPU_pc` explicitly and avoid the existing block-start pointer assumptions; or
+  3. an eager same-page prechain experiment that still chains only whole `fiber_block` starts (useful but not a true superblock).
+- The first true superblock prototype should be opt-in and should add a targeted invalidation fixture where code in the second segment is patched after the superblock is compiled. The test must prove page-index invalidation drops the whole superblock and that precise load/store fault PCs still report the faulting guest instruction, not the superblock entry.
+- Given the current data, the best next implementation step is a design/representation tranche or a very narrow eager-prechain experiment, not internal-target concatenation.
+
 ## Phase 4: hot traces
 
 Only after superblocks are stable:
