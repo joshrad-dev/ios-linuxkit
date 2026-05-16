@@ -55,6 +55,10 @@ static _Atomic uint64_t arm64_block_stats_jump0;
 static _Atomic uint64_t arm64_block_stats_jump1;
 static _Atomic uint64_t arm64_block_stats_chain_attempts;
 static _Atomic uint64_t arm64_block_stats_chain_patches;
+static _Atomic uint64_t arm64_block_stats_chain_patch_slot0;
+static _Atomic uint64_t arm64_block_stats_chain_patch_slot1;
+static _Atomic uint64_t arm64_block_stats_chain_patch_same_page;
+static _Atomic uint64_t arm64_block_stats_chain_patch_cross_page;
 
 void arm64_block_stats_set_enabled_from_env(const char *env) {
     arm64_block_stats_enabled = env != NULL && env[0] != '\0' && strcmp(env, "0") != 0;
@@ -65,7 +69,7 @@ void arm64_block_stats_dump_if_enabled(void) {
         return;
     arm64_block_stats_dumped = true;
     fprintf(stderr,
-            "ARM64_BLOCK_STATS entries=%llu cache_hits=%llu cache_misses=%llu compiled=%llu code_words=%llu guest_bytes=%llu jump0=%llu jump1=%llu chain_attempts=%llu chain_patches=%llu\n",
+            "ARM64_BLOCK_STATS entries=%llu cache_hits=%llu cache_misses=%llu compiled=%llu code_words=%llu guest_bytes=%llu jump0=%llu jump1=%llu chain_attempts=%llu chain_patches=%llu chain_patch_slot0=%llu chain_patch_slot1=%llu chain_patch_same_page=%llu chain_patch_cross_page=%llu\n",
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_entries, memory_order_relaxed),
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_cache_hits, memory_order_relaxed),
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_cache_misses, memory_order_relaxed),
@@ -75,7 +79,11 @@ void arm64_block_stats_dump_if_enabled(void) {
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_jump0, memory_order_relaxed),
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_jump1, memory_order_relaxed),
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_chain_attempts, memory_order_relaxed),
-            (unsigned long long)atomic_load_explicit(&arm64_block_stats_chain_patches, memory_order_relaxed));
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_chain_patches, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_chain_patch_slot0, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_chain_patch_slot1, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_chain_patch_same_page, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_chain_patch_cross_page, memory_order_relaxed));
     fflush(stderr);
 }
 
@@ -768,6 +776,14 @@ static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
                                 (*last_block->jump_ip[i] & 0xffffffff) == block->addr) {
                             *last_block->jump_ip[i] = (unsigned long) block->code;
                             ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patches);
+                            if (i == 0)
+                                ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_slot0);
+                            else
+                                ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_slot1);
+                            if (PAGE(last_block->addr) == PAGE(block->addr))
+                                ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_same_page);
+                            else
+                                ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_cross_page);
                             list_add(&block->jumps_from[i], &last_block->jumps_from_links[i]);
                         }
                     }

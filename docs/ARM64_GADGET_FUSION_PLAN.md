@@ -329,12 +329,16 @@ Phase 2 closeout / Phase 3A reconnaissance:
 
 - After Phase 2Q, the measured `LDR -> CBZ` residual gap is about `773` out of `138419` candidates in `/workspace/tmp/ish-arm64-node-bun-perf-20260516-041206.md`, so Phase 2 peephole work is effectively complete for adjacent same-page patterns.
 - Added opt-in block/chaining reconnaissance counters with `ISH_ARM64_BLOCK_STATS=1`. These are silent by default and print one `ARM64_BLOCK_STATS` line per process at exit, analogous to `ISH_ARM64_FUSION_STATS`.
-- The counters track block entries, cache hits/misses, compiled blocks, generated code words, guest bytes, direct jump slots, chain attempts, and chain patches.
-- Validation reports:
+- The counters track block entries, cache hits/misses, compiled blocks, generated code words, guest bytes, direct jump slots, chain attempts, chain patches, chain slot split, and same-page/cross-page patch split.
+- Initial validation reports:
   - Fusion+block-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-043212.md`, **10 / 10 passing**. Aggregated table totals: `entries=13142739`, `compiled=4483554`, `chain_attempts=6046842`, `chain_patches=5296075`, patch rate about **87.6%**, average compiled block length about **23.6 guest bytes**.
   - Default/no-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-043257.md`, **10 / 10 passing**, no stats output.
   - Core Alpine runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-043349.md`, **82 / 82 passing**.
-- Phase 3A should remain reconnaissance/design first. The high chain-patch rate confirms that a same-page direct-target superblock prototype may be worthwhile, but the first prototype should not weaken invalidation or precise fault-PC guarantees.
+- Refined same-page/slot split validation reports:
+  - Fusion+block-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-044756.md`, **10 / 10 passing**. Aggregated table totals: `entries=13170583`, `compiled=4516350`, `chain_attempts=6084891`, `chain_patches=5337294`, `chain_patch_same_page=4055538`, `chain_patch_cross_page=1281756`, `chain_patch_slot0=2249708`, and `chain_patch_slot1=3087586`. Patch rate is about **87.7%**; same-page patches are about **76.0%** of patched chains; average compiled block length is about **23.7 guest bytes**.
+  - Default/no-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-044839.md`, **10 / 10 passing**, no stats output.
+  - Core Alpine runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-044925.md`, **82 / 82 passing**.
+- Phase 3A should remain reconnaissance/design first. The high chain-patch rate and high same-page share confirm that a same-page direct-target superblock prototype may be worthwhile, but the first prototype should not weaken invalidation or precise fault-PC guarantees.
 
 Phase 3 should wait until the Phase 1/2 fusion tranche is stable across repeated Node/Bun and core runtime runs. Initial design remains same-page and conservative:
 
