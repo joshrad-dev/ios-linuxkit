@@ -145,7 +145,6 @@
 }
 
 - (void)viewDidAppear:(BOOL)animated {
-    [AppDelegate maybePresentStartupMessageOnViewController:self];
     [super viewDidAppear:animated];
 }
 
