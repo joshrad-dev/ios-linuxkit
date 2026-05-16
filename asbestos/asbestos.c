@@ -46,6 +46,7 @@ extern int current_pid(void);
 static bool arm64_block_stats_enabled;
 static bool arm64_block_stats_dumped;
 static bool arm64_eager_prechain_enabled;
+static bool arm64_eager_prechain_incoming_enabled;
 static _Atomic uint64_t arm64_block_stats_entries;
 static _Atomic uint64_t arm64_block_stats_cache_hits;
 static _Atomic uint64_t arm64_block_stats_cache_misses;
@@ -62,6 +63,10 @@ static _Atomic uint64_t arm64_block_stats_chain_patch_same_page;
 static _Atomic uint64_t arm64_block_stats_chain_patch_cross_page;
 static _Atomic uint64_t arm64_block_stats_prechain_attempts;
 static _Atomic uint64_t arm64_block_stats_prechain_patches;
+static _Atomic uint64_t arm64_block_stats_prechain_outgoing_attempts;
+static _Atomic uint64_t arm64_block_stats_prechain_outgoing_patches;
+static _Atomic uint64_t arm64_block_stats_prechain_incoming_attempts;
+static _Atomic uint64_t arm64_block_stats_prechain_incoming_patches;
 
 static bool env_enabled(const char *env) {
     return env != NULL && env[0] != '\0' && strcmp(env, "0") != 0;
@@ -75,12 +80,16 @@ void arm64_eager_prechain_set_enabled_from_env(const char *env) {
     arm64_eager_prechain_enabled = env_enabled(env);
 }
 
+void arm64_eager_prechain_incoming_set_enabled_from_env(const char *env) {
+    arm64_eager_prechain_incoming_enabled = env_enabled(env);
+}
+
 void arm64_block_stats_dump_if_enabled(void) {
     if (!arm64_block_stats_enabled || arm64_block_stats_dumped)
         return;
     arm64_block_stats_dumped = true;
     fprintf(stderr,
-            "ARM64_BLOCK_STATS entries=%llu cache_hits=%llu cache_misses=%llu compiled=%llu code_words=%llu guest_bytes=%llu jump0=%llu jump1=%llu chain_attempts=%llu chain_patches=%llu chain_patch_slot0=%llu chain_patch_slot1=%llu chain_patch_same_page=%llu chain_patch_cross_page=%llu prechain_attempts=%llu prechain_patches=%llu\n",
+            "ARM64_BLOCK_STATS entries=%llu cache_hits=%llu cache_misses=%llu compiled=%llu code_words=%llu guest_bytes=%llu jump0=%llu jump1=%llu chain_attempts=%llu chain_patches=%llu chain_patch_slot0=%llu chain_patch_slot1=%llu chain_patch_same_page=%llu chain_patch_cross_page=%llu prechain_attempts=%llu prechain_patches=%llu prechain_outgoing_attempts=%llu prechain_outgoing_patches=%llu prechain_incoming_attempts=%llu prechain_incoming_patches=%llu\n",
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_entries, memory_order_relaxed),
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_cache_hits, memory_order_relaxed),
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_cache_misses, memory_order_relaxed),
@@ -96,7 +105,11 @@ void arm64_block_stats_dump_if_enabled(void) {
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_chain_patch_same_page, memory_order_relaxed),
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_chain_patch_cross_page, memory_order_relaxed),
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_prechain_attempts, memory_order_relaxed),
-            (unsigned long long)atomic_load_explicit(&arm64_block_stats_prechain_patches, memory_order_relaxed));
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_prechain_patches, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_prechain_outgoing_attempts, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_prechain_outgoing_patches, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_prechain_incoming_attempts, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_prechain_incoming_patches, memory_order_relaxed));
     fflush(stderr);
 }
 
@@ -579,7 +592,7 @@ void asbestos_invalidate_all(struct asbestos *asbestos) {
 
 static struct fiber_block *fiber_lookup(struct asbestos *asbestos, addr_t addr);
 #ifdef GUEST_ARM64
-static void fiber_prechain_outgoing_same_page(struct asbestos *asbestos, struct fiber_block *block);
+static void fiber_prechain_same_page(struct asbestos *asbestos, struct fiber_block *block);
 #endif
 
 static void fiber_resize_hash(struct asbestos *asbestos, size_t new_size) {
@@ -612,7 +625,7 @@ static void fiber_insert(struct asbestos *asbestos, struct fiber_block *block) {
         list_init_add(blocks_list(asbestos, PAGE(block->end_addr), 1), &block->page[1]);
 #ifdef GUEST_ARM64
     if (arm64_eager_prechain_enabled)
-        fiber_prechain_outgoing_same_page(asbestos, block);
+        fiber_prechain_same_page(asbestos, block);
 #endif
 }
 
@@ -631,29 +644,90 @@ static struct fiber_block *fiber_lookup(struct asbestos *asbestos, addr_t addr) 
 #ifdef GUEST_ARM64
 #define ARM64_FAKE_IP_MASK UINT64_C(0x0000ffffffffffff)
 #define ARM64_FAKE_IP_TAG (UINT64_C(1) << 63)
+#define ARM64_EAGER_PRECHAIN_INCOMING_SCAN_LIMIT 2
+
+static bool arm64_fake_jump_target(unsigned long jump_ip, addr_t *target_addr) {
+    if ((jump_ip & ARM64_FAKE_IP_TAG) == 0)
+        return false;
+    *target_addr = (addr_t)(jump_ip & ARM64_FAKE_IP_MASK);
+    return true;
+}
+
+static bool fiber_prechain_patch_slot(struct fiber_block *source, int i, struct fiber_block *target) {
+    if (source->jump_ip[i] == NULL || source->is_jetsam || target->is_jetsam)
+        return false;
+    addr_t target_addr;
+    if (!arm64_fake_jump_target(*source->jump_ip[i], &target_addr))
+        return false;
+    if (target_addr != target->addr || PAGE(source->addr) != PAGE(target->addr))
+        return false;
+    *source->jump_ip[i] = (unsigned long) target->code;
+    list_add(&target->jumps_from[i], &source->jumps_from_links[i]);
+    return true;
+}
 
 static void fiber_prechain_outgoing_same_page(struct asbestos *asbestos, struct fiber_block *block) {
-    // Optional Phase 3A experiment: patch newly inserted same-page outgoing
-    // edges to already-compiled whole-block starts. This deliberately writes
-    // only block->code pointers into existing jump_ip slots; it does not create
-    // interior superblock targets.
+    // Patch newly inserted same-page outgoing edges to already-compiled
+    // whole-block starts. This deliberately writes only block->code pointers
+    // into existing jump_ip slots; it does not create interior targets.
     for (int i = 0; i <= 1; i++) {
         if (block->jump_ip[i] == NULL)
             continue;
-        unsigned long jump_ip = *block->jump_ip[i];
-        if ((jump_ip & ARM64_FAKE_IP_TAG) == 0)
+        addr_t target_addr;
+        if (!arm64_fake_jump_target(*block->jump_ip[i], &target_addr))
             continue;
-        addr_t target_addr = (addr_t)(jump_ip & ARM64_FAKE_IP_MASK);
         if (PAGE(block->addr) != PAGE(target_addr))
             continue;
         ARM64_BLOCK_STAT_INC(arm64_block_stats_prechain_attempts);
+        ARM64_BLOCK_STAT_INC(arm64_block_stats_prechain_outgoing_attempts);
         struct fiber_block *target = fiber_lookup(asbestos, target_addr);
-        if (target == NULL || target->is_jetsam)
+        if (target == NULL)
             continue;
-        *block->jump_ip[i] = (unsigned long) target->code;
-        ARM64_BLOCK_STAT_INC(arm64_block_stats_prechain_patches);
-        list_add(&target->jumps_from[i], &block->jumps_from_links[i]);
+        if (fiber_prechain_patch_slot(block, i, target)) {
+            ARM64_BLOCK_STAT_INC(arm64_block_stats_prechain_patches);
+            ARM64_BLOCK_STAT_INC(arm64_block_stats_prechain_outgoing_patches);
+        }
     }
+}
+
+static void fiber_prechain_incoming_same_page(struct asbestos *asbestos, struct fiber_block *block) {
+    // Patch existing same-page source blocks that were compiled before this
+    // target. Keep the scan bounded to avoid O(blocks-per-page^2) compile-time
+    // behavior on dense code pages; the newest blocks are at the list head and
+    // are the most likely direct predecessors. Only still-fake slots are
+    // considered, so each source link is owned by at most one target list.
+    struct list *sources = blocks_list(asbestos, PAGE(block->addr), 0);
+    if (list_null(sources))
+        return;
+    struct fiber_block *source;
+    unsigned scanned = 0;
+    list_for_each_entry(sources, source, page[0]) {
+        if (source == block)
+            continue;
+        if (scanned++ >= ARM64_EAGER_PRECHAIN_INCOMING_SCAN_LIMIT)
+            break;
+        for (int i = 0; i <= 1; i++) {
+            if (source->jump_ip[i] == NULL)
+                continue;
+            addr_t target_addr;
+            if (!arm64_fake_jump_target(*source->jump_ip[i], &target_addr))
+                continue;
+            if (target_addr != block->addr)
+                continue;
+            ARM64_BLOCK_STAT_INC(arm64_block_stats_prechain_attempts);
+            ARM64_BLOCK_STAT_INC(arm64_block_stats_prechain_incoming_attempts);
+            if (fiber_prechain_patch_slot(source, i, block)) {
+                ARM64_BLOCK_STAT_INC(arm64_block_stats_prechain_patches);
+                ARM64_BLOCK_STAT_INC(arm64_block_stats_prechain_incoming_patches);
+            }
+        }
+    }
+}
+
+static void fiber_prechain_same_page(struct asbestos *asbestos, struct fiber_block *block) {
+    fiber_prechain_outgoing_same_page(asbestos, block);
+    if (arm64_eager_prechain_incoming_enabled)
+        fiber_prechain_incoming_same_page(asbestos, block);
 }
 #endif
 
@@ -823,20 +897,28 @@ static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
                 // and is thus assumed to have no pointers left
                 if (!last_block->is_jetsam && !block->is_jetsam) {
                     for (int i = 0; i <= 1; i++) {
-                        if (last_block->jump_ip[i] != NULL &&
-                                (*last_block->jump_ip[i] & 0xffffffff) == block->addr) {
-                            *last_block->jump_ip[i] = (unsigned long) block->code;
-                            ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patches);
-                            if (i == 0)
-                                ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_slot0);
-                            else
-                                ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_slot1);
-                            if (PAGE(last_block->addr) == PAGE(block->addr))
-                                ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_same_page);
-                            else
-                                ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_cross_page);
-                            list_add(&block->jumps_from[i], &last_block->jumps_from_links[i]);
-                        }
+                        if (last_block->jump_ip[i] == NULL)
+                            continue;
+#ifdef GUEST_ARM64
+                        addr_t target_addr;
+                        if (!arm64_fake_jump_target(*last_block->jump_ip[i], &target_addr) ||
+                                target_addr != block->addr)
+                            continue;
+#else
+                        if ((*last_block->jump_ip[i] & 0xffffffff) != block->addr)
+                            continue;
+#endif
+                        *last_block->jump_ip[i] = (unsigned long) block->code;
+                        ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patches);
+                        if (i == 0)
+                            ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_slot0);
+                        else
+                            ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_slot1);
+                        if (PAGE(last_block->addr) == PAGE(block->addr))
+                            ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_same_page);
+                        else
+                            ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_cross_page);
+                        list_add(&block->jumps_from[i], &last_block->jumps_from_links[i]);
                     }
                 }
                 unlock(&asbestos->lock);

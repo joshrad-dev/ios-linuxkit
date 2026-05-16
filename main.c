@@ -255,9 +255,11 @@ int main(int argc, char *const argv[]) {
     extern void arm64_fusion_stats_set_enabled_from_env(const char *env);
     extern void arm64_block_stats_set_enabled_from_env(const char *env);
     extern void arm64_eager_prechain_set_enabled_from_env(const char *env);
+    extern void arm64_eager_prechain_incoming_set_enabled_from_env(const char *env);
     arm64_fusion_stats_set_enabled_from_env(getenv("ISH_ARM64_FUSION_STATS"));
     arm64_block_stats_set_enabled_from_env(getenv("ISH_ARM64_BLOCK_STATS"));
     arm64_eager_prechain_set_enabled_from_env(getenv("ISH_ARM64_EAGER_PRECHAIN"));
+    arm64_eager_prechain_incoming_set_enabled_from_env(getenv("ISH_ARM64_EAGER_PRECHAIN_INCOMING"));
     asbestos_set_trace_pcs(getenv("ISH_TRACE_PCS"));
     asbestos_set_trace_gate(getenv("ISH_TRACE_GATE_PC"),
                             getenv("ISH_TRACE_GATE_X4"),
