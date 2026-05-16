@@ -61,6 +61,23 @@
 .endm
 
 /*
+ * Internal continue for future true-superblock segments.
+ * Code stream: [gadget addr][guest_pc (64-bit)][internal_code_ptr (64-bit)]
+ *
+ * This is deliberately not a normal chained pointer path: the continuation
+ * pointer is consumed only by this gadget, is never stored in jump_ip, and is
+ * never passed to fiber_ret_chain. The generator should store an offset while
+ * the block is reallocatable and patch this operand to a final code pointer in
+ * gen_end.
+ */
+.gadget internal_continue
+    ldr x8, [_pc], #8       // guest PC for observability/timer exits
+    ldr x9, [_pc]           // internal continuation code-stream pointer
+    str x8, [_cpu, #CPU_pc]
+    mov _pc, x9
+    gret
+
+/*
  * Unconditional branch (B)
  * Code stream: [gadget addr][fake_target (64-bit)]
  *

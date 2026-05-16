@@ -966,6 +966,11 @@ void gen_start(addr_t addr, struct gen_state *state) {
         state->jump_ip[i] = 0;
     }
     state->block_patch_ip = 0;
+    state->internal_continue_count = 0;
+    for (int i = 0; i < GEN_INTERNAL_CONTINUE_MAX; i++) {
+        state->internal_continue_patch_ip[i] = 0;
+        state->internal_continue_target_ip[i] = 0;
+    }
 
     struct fiber_block *block = malloc(sizeof(struct fiber_block) + state->capacity * sizeof(unsigned long));
     state->block = block;
@@ -987,6 +992,10 @@ void gen_end(struct gen_state *state) {
     }
     if (state->block_patch_ip != 0) {
         block->code[state->block_patch_ip] = (unsigned long) block;
+    }
+    for (unsigned i = 0; i < state->internal_continue_count; i++) {
+        block->code[state->internal_continue_patch_ip[i]] =
+            (unsigned long) &block->code[state->internal_continue_target_ip[i]];
     }
     if (block->addr != state->ip)
         block->end_addr = state->ip - 1;
