@@ -7,7 +7,7 @@
 #include "emu/tlb.h"
 
 #define GEN_INTERNAL_CONTINUE_MAX 4
-#define GEN_INTERNAL_CONTINUE_BUDGET_INSNS 8
+#define GEN_INTERNAL_CONTINUE_BUDGET_INSNS 2
 
 struct gen_state {
     addr_t ip;

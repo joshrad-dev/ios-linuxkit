@@ -713,6 +713,96 @@ bcond_fi_not_taken:
     gret
 
 /*
+ * Conditional branch with internal taken edge and external fallthrough edge.
+ * Code stream: [gadget addr][cond][internal_continue_ptr][fake_fallthrough]
+ *
+ * The taken edge jumps to a private internal-continue record and never passes
+ * the interior pointer to fiber_ret_chain. The not-taken edge uses the normal
+ * external fake-IP/block->code chain path.
+ */
+.gadget bcond_taken_internal
+    ldr x8, [_pc], #8       // cond
+    ldr x9, [_pc], #8       // internal_continue record pointer
+    ldr x10, [_pc]          // fallthrough target (fake_ip or chained)
+
+    and x8, x8, #0xf
+    adr x11, bcond_taken_internal_table
+    add x11, x11, x8, lsl #2
+    load_flags
+    br x11
+
+    .align 2
+bcond_taken_internal_table:
+    b bcond_ti_eq
+    b bcond_ti_ne
+    b bcond_ti_cs
+    b bcond_ti_cc
+    b bcond_ti_mi
+    b bcond_ti_pl
+    b bcond_ti_vs
+    b bcond_ti_vc
+    b bcond_ti_hi
+    b bcond_ti_ls
+    b bcond_ti_ge
+    b bcond_ti_lt
+    b bcond_ti_gt
+    b bcond_ti_le
+    b bcond_ti_taken
+    b bcond_ti_taken
+bcond_ti_eq:
+    b.eq bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_ne:
+    b.ne bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_cs:
+    b.cs bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_cc:
+    b.cc bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_mi:
+    b.mi bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_pl:
+    b.pl bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_vs:
+    b.vs bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_vc:
+    b.vc bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_hi:
+    b.hi bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_ls:
+    b.ls bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_ge:
+    b.ge bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_lt:
+    b.lt bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_gt:
+    b.gt bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_le:
+    b.le bcond_ti_taken
+    b bcond_ti_not_taken
+bcond_ti_taken:
+    mov _pc, x9
+    gret
+bcond_ti_not_taken:
+    inline_chain x10, bcond_ti_not_taken_unchained
+bcond_ti_not_taken_unchained:
+    and x11, x10, #0xffffffffffff
+    str x11, [_cpu, #CPU_pc]
+    mov _pc, x10
+    b fiber_ret_chain
+
+/*
  * System call (SVC)
  * Code stream: [gadget addr][next_pc (64-bit)]
  *

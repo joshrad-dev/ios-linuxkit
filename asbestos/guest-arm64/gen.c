@@ -38,6 +38,7 @@ extern void gadget_check_highbits(void);
 
 static bool arm64_fusion_stats_enabled;
 static bool arm64_internal_continue_enabled;
+static bool arm64_internal_continue_taken_enabled;
 static uint64_t arm64_fusion_cmp_bcond_count;
 static uint64_t arm64_fusion_subs_bcond_count;
 static uint64_t arm64_fusion_adrp_add_count;
@@ -117,6 +118,10 @@ void arm64_fusion_stats_set_enabled_from_env(const char *env) {
 
 void arm64_internal_continue_set_enabled_from_env(const char *env) {
     arm64_internal_continue_enabled = env != NULL && env[0] != '\0' && strcmp(env, "0") != 0;
+}
+
+void arm64_internal_continue_taken_set_enabled_from_env(const char *env) {
+    arm64_internal_continue_taken_enabled = env != NULL && env[0] != '\0' && strcmp(env, "0") != 0;
 }
 
 #define ARM64_FUSION_STAT_INC(counter) do { \
@@ -246,6 +251,7 @@ extern void gadget_bcond_lt(void);
 extern void gadget_bcond_gt(void);
 extern void gadget_bcond_le(void);
 extern void gadget_bcond_fallthrough_internal(void);
+extern void gadget_bcond_taken_internal(void);
 extern void gadget_internal_continue(void);
 
 // Fused CMP-imm + B.cond gadgets (rd=31, CMP only sets flags)
@@ -2417,7 +2423,32 @@ static int gen_branch(struct gen_state *state, uint32_t insn) {
             state->jump_ip[0] = state->size - 1;
         } else if (arm64_internal_continue_enabled && !state->internal_continue_used &&
                    state->internal_continue_count + 2 <= GEN_INTERNAL_CONTINUE_MAX &&
-                   PAGE(state->ip) == PAGE(state->block->addr)) {
+                   PAGE(state->ip) == PAGE(state->block->addr) &&
+                   ((arm64_internal_continue_taken_enabled && PAGE(target) == PAGE(state->block->addr) &&
+                     target > state->ip && target - state->ip <= 8) || target < state->ip)) {
+            if (arm64_internal_continue_taken_enabled && PAGE(target) == PAGE(state->block->addr) && target > state->ip && target - state->ip <= 8) {
+                // Phase 3B second prototype: taken edge continues through a
+                // private internal-continue record; fallthrough exits normally.
+                // The only public chain slot remains the external fake fallthrough.
+                gen(state, (unsigned long) gadget_bcond_taken_internal);
+                gen(state, cond);
+                unsigned internal_patch_ip = state->size;
+                gen(state, 0);
+                gen(state, fake_fallthrough);
+                state->jump_ip[0] = state->size - 1;  // external fallthrough
+                unsigned internal_continue_ip = state->size;
+                if (!gen_record_internal_continue_patch(state, internal_patch_ip, internal_continue_ip) ||
+                        !gen_emit_internal_continue_record(state, target)) {
+                    abort();
+                }
+                ARM64_FUSION_STAT_INC(arm64_internal_continue_count);
+                state->internal_continue_used = 1;
+                state->internal_continue_segment_start = target;
+                state->internal_continue_segment_budget = GEN_INTERNAL_CONTINUE_BUDGET_INSNS;
+                state->ip = target;
+                return 1;
+            }
+
             // Phase 3B first prototype: taken edge exits normally; fallthrough
             // continues through a private internal-continue record. The only
             // public chain slot remains the external fake target.

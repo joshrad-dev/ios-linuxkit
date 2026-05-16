@@ -160,6 +160,7 @@ prepare_fixture() {
 uintptr_t expected_internal_fault_pc;
 
 int ic_branch_fixture(int v);
+int ic_fallthrough_fixture(int v);
 int ic_call_adjacent_fixture(int v);
 void ic_internal_fault_fixture(int v);
 int ic_invalidation_fixture(int v);
@@ -176,42 +177,54 @@ __asm__(
 "    ret\n"
 "1:  mov w0, #11\n"
 "    ret\n"
+".global ic_fallthrough_fixture\n"
+"ic_fallthrough_fixture:\n"
+"    b 3f\n"
+"2:  mov w0, #22\n"
+"    ret\n"
+"3:  cmp w0, #0\n"
+"    b.eq 2b\n"
+"    mov w0, #11\n"
+"    ret\n"
 ".global ic_call_adjacent_fixture\n"
 "ic_call_adjacent_fixture:\n"
-"    stp x29, x30, [sp, #-16]!\n"
+"    b 5f\n"
+"4:  add w0, w0, #9\n"
+"    ret\n"
+"5:  stp x29, x30, [sp, #-16]!\n"
 "    bl ic_call_helper_fixture\n"
 "    ldp x29, x30, [sp], #16\n"
 "    cmp w0, #7\n"
-"    b.eq 2f\n"
+"    b.eq 4b\n"
 "    add w0, w0, #5\n"
-"    ret\n"
-"2:  add w0, w0, #9\n"
 "    ret\n"
 "ic_call_helper_fixture:\n"
 "    add w0, w0, #1\n"
 "    ret\n"
 ".global ic_internal_fault_fixture\n"
 "ic_internal_fault_fixture:\n"
-"    cmp w0, #0\n"
-"    b.eq 4f\n"
+"    b 7f\n"
+"6:  ret\n"
+"7:  cmp w0, #0\n"
+"    b.eq 6b\n"
 "    adrp x10, expected_internal_fault_pc\n"
 "    add x10, x10, :lo12:expected_internal_fault_pc\n"
-"    adr x9, 3f\n"
+"    adr x9, 8f\n"
 "    str x9, [x10]\n"
 "    mov x11, xzr\n"
-"3:  ldr x12, [x11]\n"
+"8:  ldr x12, [x11]\n"
 "    mov w0, #99\n"
 "    ret\n"
-"4:  ret\n"
 ".global ic_invalidation_fixture\n"
 ".global ic_invalidation_patch_site\n"
 "ic_invalidation_fixture:\n"
-"    cmp w0, #0\n"
-"    b.eq 5f\n"
+"    b 10f\n"
+"9:  mov w0, #17\n"
+"    ret\n"
+"10: cmp w0, #0\n"
+"    b.eq 9b\n"
 "ic_invalidation_patch_site:\n"
 "    mov w0, #31\n"
-"    ret\n"
-"5:  mov w0, #17\n"
 "    ret\n"
 );
 
@@ -240,6 +253,22 @@ static int branch_fixture(void) {
         return 1;
     }
     puts("branch-ok");
+    return 0;
+}
+
+static int fallthrough_fixture(void) {
+    int fail = 0;
+    for (int i = 0; i < 64; i++) {
+        if (ic_fallthrough_fixture(0) != 22)
+            fail++;
+        if (ic_fallthrough_fixture(1) != 11)
+            fail++;
+    }
+    if (fail) {
+        printf("fallthrough-fail %d\n", fail);
+        return 1;
+    }
+    puts("fallthrough-ok");
     return 0;
 }
 
@@ -311,11 +340,13 @@ static int fault_fixture(void) {
 
 int main(int argc, char **argv) {
     if (argc != 2) {
-        fprintf(stderr, "usage: %s branch|call|fault|invalidation\n", argv[0]);
+        fprintf(stderr, "usage: %s branch|fallthrough|call|fault|invalidation\n", argv[0]);
         return 2;
     }
     if (strcmp(argv[1], "branch") == 0)
         return branch_fixture();
+    if (strcmp(argv[1], "fallthrough") == 0)
+        return fallthrough_fixture();
     if (strcmp(argv[1], "call") == 0)
         return call_adjacent_fixture();
     if (strcmp(argv[1], "fault") == 0)
@@ -339,7 +370,8 @@ main() {
     run_host_test "build fixture" "" "cd '$GUEST_WORK' && command -v gcc >/dev/null && gcc -O0 -fno-pie -no-pie internal_continue_fixture.c -o internal_continue_fixture && test -x internal_continue_fixture && echo build-ok" exact "build-ok"
     run_host_test "default branch fixture stays silent" "" "cd '$GUEST_WORK' && ./internal_continue_fixture branch" exact "branch-ok"
     run_host_test "stats-only default-off fixture" "ISH_ARM64_FUSION_STATS=1" "cd '$GUEST_WORK' && ./internal_continue_fixture branch" stats-zero "branch-ok"
-    run_host_test "opt-in branch taken/fallthrough fixture" "ISH_ARM64_FUSION_STATS=1 ISH_ARM64_INTERNAL_CONTINUE=1" "cd '$GUEST_WORK' && ./internal_continue_fixture branch" stats-positive "branch-ok"
+    run_host_test "opt-in branch taken-internal fixture" "ISH_ARM64_FUSION_STATS=1 ISH_ARM64_INTERNAL_CONTINUE=1 ISH_ARM64_INTERNAL_CONTINUE_TAKEN=1" "cd '$GUEST_WORK' && ./internal_continue_fixture branch" stats-positive "branch-ok"
+    run_host_test "opt-in branch fallthrough-internal fixture" "ISH_ARM64_FUSION_STATS=1 ISH_ARM64_INTERNAL_CONTINUE=1" "cd '$GUEST_WORK' && ./internal_continue_fixture fallthrough" stats-positive "fallthrough-ok"
     run_host_test "default same-page invalidation fixture" "" "cd '$GUEST_WORK' && ./internal_continue_fixture invalidation" exact "invalidation-ok"
     run_host_test "opt-in same-page invalidation fixture" "ISH_ARM64_FUSION_STATS=1 ISH_ARM64_INTERNAL_CONTINUE=1" "cd '$GUEST_WORK' && ./internal_continue_fixture invalidation" stats-positive "invalidation-ok"
     run_host_test "opt-in call-adjacent fixture" "ISH_ARM64_FUSION_STATS=1 ISH_ARM64_INTERNAL_CONTINUE=1" "cd '$GUEST_WORK' && ./internal_continue_fixture call" stats-positive "call-adjacent-ok"
