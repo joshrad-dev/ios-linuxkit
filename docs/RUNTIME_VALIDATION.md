@@ -6,9 +6,9 @@ Supporting documentation: [ARM64 backend](ARM64_BACKEND.md), [workload smoke tes
 
 ## Current validation baseline
 
-Latest staged runtime report: **82 / 82 passing**
+Latest staged runtime report: **83 / 83 passing**
 
-- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-044925.md`
+- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-100813.md`
 - Binary: `build-arm64-linux/ish`
 - Rootfs: `alpine-arm64-fakefs`
 - Timeout: `TIMEOUT_S=180`
@@ -75,6 +75,7 @@ A passing core run writes `ish-arm64-runtime-coverage-YYYYMMDD-HHMMSS.md` under 
 | `python` / `lua` | version and eval smoke | Interpreted runtime startup, stdio, basic arithmetic/eval, and package availability assumptions. |
 | `java` / `clojure` | `javac` + default mixed-mode `java`, `java -Xint`, `clojure.main` eval | OpenJDK startup, mixed-mode compiler/JIT smoke, interpreter fallback, signal/ucontext compatibility, and Clojure-on-JVM startup. |
 | `pypy` / `swift` | Alpine aarch64 availability probes | Keeps unsupported toolchains explicit instead of silently skipping them. |
+| `csharpaot` | `csharpaot` build/run when installed, `dotnet publish -p:PublishAot=true` fallback when `dotnet` is installed, otherwise package-availability probe | Tracks .NET NativeAOT availability without installing the large SDK in the default gate. |
 | `rust` | `rustc --version`, direct compile/run, optimized std runtime, `rustc --test`, Cargo build/run/test | Rust toolchain startup/codegen plus std coverage for threads, atomics, channels, file I/O, TCP loopback, and child processes. |
 | `erlang` | `erl -version` | BEAM startup and helper-thread cleanup without exit safety-valve leaks. |
 | `zig` | `zig version`, `zig build-obj`, C harness link/run | Zig frontend/object generation plus ARM64 object execution through a linked native harness. |
@@ -121,6 +122,7 @@ This makes Rust a useful proxy for pthread/futex behavior, socket blocking seman
 | Python / Lua / Clojure | Passing | Version/eval smoke passes in the staged harness. |
 | Java/OpenJDK | Passing | OpenJDK 21 default mixed-mode `javac`/`java`, `-Xint`, and Java-equivalent Benchmarks Game probe pass. |
 | PyPy / Swift | Accounted for | Alpine 3.23 aarch64 currently has no packaged PyPy or Swift toolchain in the index. |
+| C# NativeAOT / `csharpaot` | Accounted for | The default gate probes `csharpaot`/`dotnet`; Alpine currently exposes `dotnet*-sdk-aot` packages but they are not installed in the fakefs, so the row reports `csharpaot-package-available-uninstalled`. |
 | Rust | Passing | Direct `rustc`, optimized std runtime, `rustc --test`, and Cargo build/run/test pass without safety-valve or NETDIAG noise. |
 | Erlang | Passing | BEAM starts cleanly for `erl -version`; fuller module execution remains a follow-up lane. |
 | Zig | Passing | `zig version`, `zig build-obj`, and linked object execution through a C harness pass; `zig test` is excluded pending Alpine Zig compiler-rt `f16` behavior. |
