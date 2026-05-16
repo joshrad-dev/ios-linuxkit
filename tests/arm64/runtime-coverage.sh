@@ -1405,6 +1405,123 @@ int main(void) {
 }
 EOF
 
+    cat >"$dir/ldr64_sp_cbz_fusion.c" <<'EOF'
+#include <stdint.h>
+#include <stdio.h>
+
+uint64_t sp_ldr_cbz_case(void);
+
+__asm__(
+".text\n"
+".align 2\n"
+".global sp_ldr_cbz_case\n"
+"sp_ldr_cbz_case:\n"
+"    sub sp, sp, #32\n"
+"    mov x9, xzr\n"
+"    str x9, [sp, #8]\n"
+"    mov x9, #7\n"
+"    str x9, [sp, #16]\n"
+"    mov x0, xzr\n"
+"    ldr x10, [sp, #8]\n"
+"    cbz x10, 1f\n"
+"    add x0, x0, #100\n"
+"    b 2f\n"
+"1:  add x0, x0, #11\n"
+"2:  ldr x11, [sp, #16]\n"
+"    cbnz x11, 3f\n"
+"    add x0, x0, #100\n"
+"    b 4f\n"
+"3:  add x0, x0, #22\n"
+"4:  add x0, x0, x11\n"
+"    add sp, sp, #32\n"
+"    ret\n"
+);
+
+int main(void) {
+    uint64_t got = sp_ldr_cbz_case();
+    if (got != 40) {
+        printf("ldr64-sp-cbz-fail %llu\n", (unsigned long long)got);
+        return 1;
+    }
+    puts("ldr64-sp-cbz-fusion-ok");
+    return 0;
+}
+EOF
+
+    cat >"$dir/fused_ldr64_sp_cbz_fault.c" <<'EOF'
+#define _GNU_SOURCE
+#include <signal.h>
+#include <setjmp.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <ucontext.h>
+
+uintptr_t expected_pc;
+void fused_fault(void);
+
+__asm__(
+".text\n"
+".align 2\n"
+".global fused_fault\n"
+"fused_fault:\n"
+"    adrp x12, expected_pc\n"
+"    add x12, x12, :lo12:expected_pc\n"
+"    adr x13, 1f\n"
+"    str x13, [x12]\n"
+"    mov x10, #123\n"
+"    mov x9, xzr\n"
+"    mov sp, x9\n"
+"1:  ldr x10, [sp]\n"
+"    cbz x10, 2f\n"
+"2:  ret\n"
+);
+
+static sigjmp_buf jb;
+static char alt_stack[16384];
+static volatile uintptr_t observed_pc;
+static volatile uintptr_t observed_fault;
+static volatile uintptr_t observed_x10;
+static volatile uintptr_t observed_sp;
+
+static void handler(int sig, siginfo_t *si, void *uctx) {
+    (void)sig;
+    ucontext_t *uc = (ucontext_t *)uctx;
+    observed_pc = (uintptr_t)uc->uc_mcontext.pc;
+    observed_fault = (uintptr_t)si->si_addr;
+    observed_x10 = (uintptr_t)uc->uc_mcontext.regs[10];
+    observed_sp = (uintptr_t)uc->uc_mcontext.sp;
+    siglongjmp(jb, 1);
+}
+
+int main(void) {
+    stack_t ss = {0};
+    ss.ss_sp = alt_stack;
+    ss.ss_size = sizeof(alt_stack);
+    if (sigaltstack(&ss, NULL) != 0)
+        return 1;
+
+    struct sigaction sa = {0};
+    sa.sa_sigaction = handler;
+    sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGSEGV, &sa, NULL) != 0)
+        return 1;
+    if (sigsetjmp(jb, 1) == 0) {
+        fused_fault();
+        return 1;
+    }
+    if (observed_pc != expected_pc || observed_fault != 0 || observed_x10 != 123 || observed_sp != 0) {
+        fprintf(stderr, "bad fused ldr64 sp cbz fault expected_pc=%#lx pc=%#lx fault=%#lx x10=%#lx sp=%#lx\n",
+                (unsigned long)expected_pc, (unsigned long)observed_pc,
+                (unsigned long)observed_fault, (unsigned long)observed_x10,
+                (unsigned long)observed_sp);
+        return 1;
+    }
+    puts("fused-ldr64-sp-cbz-fault-ok");
+    return 0;
+}
+EOF
+
     cat >"$dir/ldr32_cbz_fusion.c" <<'EOF'
 #include <stdint.h>
 #include <stdio.h>
@@ -2201,6 +2318,8 @@ run_lane() {
     run_test c "arm64 fused addsub str8 fault pc" "cd '$GUEST_WORK/c' && gcc -O0 -fno-pie -no-pie fused_addsub_str8_fault.c -o fused_addsub_str8_fault && ./fused_addsub_str8_fault | grep -qx fused-addsub-str8-fault-ok"
     run_test c "arm64 ldr cbz fusion" "cd '$GUEST_WORK/c' && gcc -O0 ldr_cbz_fusion.c -o ldr_cbz_fusion && ./ldr_cbz_fusion | grep -qx ldr-cbz-fusion-ok"
     run_test c "arm64 fused ldr cbz fault pc" "cd '$GUEST_WORK/c' && gcc -O0 -fno-pie -no-pie fused_ldr_cbz_fault.c -o fused_ldr_cbz_fault && ./fused_ldr_cbz_fault | grep -qx fused-ldr-cbz-fault-ok"
+    run_test c "arm64 ldr64 sp cbz fusion" "cd '$GUEST_WORK/c' && gcc -O0 -fno-pie -no-pie ldr64_sp_cbz_fusion.c -o ldr64_sp_cbz_fusion && ./ldr64_sp_cbz_fusion | grep -qx ldr64-sp-cbz-fusion-ok"
+    run_test c "arm64 fused ldr64 sp cbz fault pc" "cd '$GUEST_WORK/c' && gcc -O0 -fno-pie -no-pie fused_ldr64_sp_cbz_fault.c -o fused_ldr64_sp_cbz_fault && ./fused_ldr64_sp_cbz_fault | grep -qx fused-ldr64-sp-cbz-fault-ok"
     run_test c "arm64 ldr32 cbz fusion" "cd '$GUEST_WORK/c' && gcc -O0 ldr32_cbz_fusion.c -o ldr32_cbz_fusion && ./ldr32_cbz_fusion | grep -qx ldr32-cbz-fusion-ok"
     run_test c "arm64 fused ldr32 cbz fault pc" "cd '$GUEST_WORK/c' && gcc -O0 -fno-pie -no-pie fused_ldr32_cbz_fault.c -o fused_ldr32_cbz_fault && ./fused_ldr32_cbz_fault | grep -qx fused-ldr32-cbz-fault-ok"
     run_test c "arm64 ldr16 cbz fusion" "cd '$GUEST_WORK/c' && gcc -O0 ldr16_cbz_fusion.c -o ldr16_cbz_fusion && ./ldr16_cbz_fusion | grep -qx ldr16-cbz-fusion-ok"

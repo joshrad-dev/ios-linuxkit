@@ -6,9 +6,9 @@ The upstream/original README is preserved as [ORIGINAL_README.md](ORIGINAL_READM
 
 ## Current validation baseline
 
-Latest staged runtime report: **74 / 74 passing**
+Latest staged runtime report: **76 / 76 passing**
 
-- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-023403.md`
+- Report: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-025733.md`
 - Binary: `build-arm64-linux/ish`
 - Rootfs: `alpine-arm64-fakefs`
 - Timeout: `TIMEOUT_S=180`
@@ -34,7 +34,7 @@ Run the staged runtime coverage gate (defaults to all configured lanes; use `ROO
 make test-arm64-runtime-coverage REPORT_DIR=/workspace/tmp TIMEOUT_S=180 INSTALL_TIMEOUT_S=300
 ```
 
-Run the focused Node/Bun perf table before and after executor optimization work. Latest baseline: **10 / 10 passing** at `/workspace/tmp/ish-arm64-node-bun-perf-20260515-213520.md`. To include opt-in ARM64 peephole generation counters, set `ISH_ARM64_FUSION_STATS=1`; the first counter-enabled run is `/workspace/tmp/ish-arm64-node-bun-perf-20260515-214650.md`. The table validates expected Node/Bun output as well as exit status. Latest Phase 2L `ADD/SUB + STRB` validation: stats `/workspace/tmp/ish-arm64-node-bun-perf-20260516-023219.md` and default `/workspace/tmp/ish-arm64-node-bun-perf-20260516-023314.md`, both **10 / 10 passing**.
+Run the focused Node/Bun perf table before and after executor optimization work. Latest baseline: **10 / 10 passing** at `/workspace/tmp/ish-arm64-node-bun-perf-20260515-213520.md`. To include opt-in ARM64 peephole generation counters, set `ISH_ARM64_FUSION_STATS=1`; the first counter-enabled run is `/workspace/tmp/ish-arm64-node-bun-perf-20260515-214650.md`. The table validates expected Node/Bun output as well as exit status. Latest Phase 2M `LDR64 [SP] + CBZ/CBNZ` validation: stats `/workspace/tmp/ish-arm64-node-bun-perf-20260516-025605.md` and default `/workspace/tmp/ish-arm64-node-bun-perf-20260516-025647.md`, both **10 / 10 passing**.
 
 ```bash
 make test-arm64-node-bun-perf ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=180

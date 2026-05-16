@@ -261,6 +261,19 @@ Phase 2L implementation tranche:
   - Default/no-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-023314.md`, **10 / 10 passing**, no stats output.
   - Core Alpine runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-023403.md`, **74 / 74 passing**.
 
+Phase 2M implementation tranche:
+
+- Implemented narrow adjacent same-page `LDR Xt, [SP, #imm] + CBZ/CBNZ Xt` fusion for 64-bit unsigned-offset loads from the guest stack pointer.
+- This SP-base variant is separate from the non-SP `LDR64 + CBZ/CBNZ` gadget: it reads `CPU_sp` directly, writes the LDR guest PC into `LOCAL_jit_saved_pc` before the faultable memory access, stores the loaded register before branching, and preserves the same target/fallthrough chaining model.
+- Added runtime fixtures:
+  - `arm64 ldr64 sp cbz fusion` for successful SP-relative `CBZ` and `CBNZ` behavior.
+  - `arm64 fused ldr64 sp cbz fault pc` for precise LDR fault PC and no destination-register write on fault while guest SP is zero, delivered on a signal altstack.
+- Validation reports:
+  - Targeted success/fault smokes: `ldr64-sp-cbz-fusion-ok`, `fused-ldr64-sp-cbz-fault-ok`.
+  - Counter-enabled Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-025605.md`, **10 / 10 passing**. Representative fusion hits: Node eval `ldr64_sp_cbz64=4502`, Node JSON `4901`, Bun eval `1647`, Bun JSON `2293`; total table hits `13640`, covering essentially all SP-specific candidates.
+  - Default/no-stats Node/Bun perf: `/workspace/tmp/ish-arm64-node-bun-perf-20260516-025647.md`, **10 / 10 passing**, no stats output.
+  - Core Alpine runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260516-025733.md`, **76 / 76 passing**.
+
 ## Phase 3: linear superblocks
 
 Phase 3 should wait until the Phase 1 fusion tranche is stable across repeated Node/Bun and core runtime runs. Initial design remains same-page and conservative:
