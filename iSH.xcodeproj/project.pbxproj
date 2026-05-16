@@ -128,6 +128,9 @@
 		AA000502AF96D90D00FFB7A4 /* ghostty-web.js in Resources */ = {isa = PBXBuildFile; fileRef = AA000500AF96D90D00FFB7A4 /* ghostty-web.js */; };
 		AA000503AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = AA000501AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt */; };
 		AA000505AF96D90D00FFB7A4 /* ghostty-vt.wasm in Resources */ = {isa = PBXBuildFile; fileRef = AA000504AF96D90D00FFB7A4 /* ghostty-vt.wasm */; };
+		FC000001AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000010AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf */; };
+		FC000002AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000011AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf */; };
+		FC000003AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = FC000012AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt */; };
 		AA000100AF96D90D00FFB7A4 /* AboutAppearanceViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 9A28E4E9219A8B670073D200 /* AboutAppearanceViewController.m */; };
 		AA000101AF96D90D00FFB7A4 /* AltIconViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = BB267FA523A48F1500ED7CAF /* AltIconViewController.m */; };
 		AA000102AF96D90D00FFB7A4 /* ThemeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 491B31E52883BF22008EEFB0 /* ThemeViewController.m */; };
@@ -209,6 +212,9 @@
 		BB000502AF96D90D00FFB7A4 /* ghostty-web.js in Resources */ = {isa = PBXBuildFile; fileRef = AA000500AF96D90D00FFB7A4 /* ghostty-web.js */; };
 		BB000503AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = AA000501AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt */; };
 		BB000505AF96D90D00FFB7A4 /* ghostty-vt.wasm in Resources */ = {isa = PBXBuildFile; fileRef = AA000504AF96D90D00FFB7A4 /* ghostty-vt.wasm */; };
+		FC000004AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000010AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf */; };
+		FC000005AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000011AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf */; };
+		FC000006AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = FC000012AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt */; };
 		BB38597827BCEC70000A1082 /* circular.png in Resources */ = {isa = PBXBuildFile; fileRef = BB38597627BCEC70000A1082 /* circular.png */; };
 		BB38597D27BCEC78000A1082 /* dollarblock1.png in Resources */ = {isa = PBXBuildFile; fileRef = BB38597927BCEC78000A1082 /* dollarblock1.png */; };
 		BB38597F27BCEC78000A1082 /* dollarblock2.png in Resources */ = {isa = PBXBuildFile; fileRef = BB38597A27BCEC78000A1082 /* dollarblock2.png */; };
@@ -303,6 +309,9 @@
 		BBEF1A00268066D1001225BD /* ghostty-web.js in Resources */ = {isa = PBXBuildFile; fileRef = AA000500AF96D90D00FFB7A4 /* ghostty-web.js */; };
 		BBEF1A01268066D1001225BD /* ghostty-web-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = AA000501AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt */; };
 		BBEF1A02268066D1001225BD /* ghostty-vt.wasm in Resources */ = {isa = PBXBuildFile; fileRef = AA000504AF96D90D00FFB7A4 /* ghostty-vt.wasm */; };
+		FC000007AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000010AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf */; };
+		FC000008AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FC000011AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf */; };
+		FC000009AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */ = {isa = PBXBuildFile; fileRef = FC000012AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt */; };
 		BBEF1995268066D1001225BD /* sprite64.png in Resources */ = {isa = PBXBuildFile; fileRef = BB0B880E2589662200208600 /* sprite64.png */; };
 		BBEF1996268066D1001225BD /* icon.png in Resources */ = {isa = PBXBuildFile; fileRef = BB1B9A4223A5E96900414052 /* icon.png */; };
 		BBF06F6C2CC4C134009F5DB5 /* fchdir.c in Sources */ = {isa = PBXBuildFile; fileRef = BB0DF6F22CC4B01000EFECAE /* fchdir.c */; };
@@ -748,6 +757,9 @@
 		AA000500AF96D90D00FFB7A4 /* ghostty-web.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = "ghostty-web.js"; sourceTree = "<group>"; };
 		AA000501AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "ghostty-web-VENDORED.txt"; sourceTree = "<group>"; };
 		AA000504AF96D90D00FFB7A4 /* ghostty-vt.wasm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ghostty-vt.wasm"; sourceTree = "<group>"; };
+		FC000010AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Regular.ttf"; sourceTree = "<group>"; };
+		FC000011AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Bold.ttf"; sourceTree = "<group>"; };
+		FC000012AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "FiraCodeNerdFontMono-VENDORED.txt"; sourceTree = "<group>"; };
 		BB4A53AF1FAA787900A72ACE /* term.css */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.css; path = term.css; sourceTree = "<group>"; };
 		BB4A922D24EDA461002F5A96 /* icon1337.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon1337.png; sourceTree = "<group>"; };
 		BB4A922F24EDA55C002F5A96 /* colontildehash.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = colontildehash.png; sourceTree = "<group>"; };
@@ -1110,6 +1122,9 @@
 				AA000500AF96D90D00FFB7A4 /* ghostty-web.js */,
 				AA000501AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt */,
 				AA000504AF96D90D00FFB7A4 /* ghostty-vt.wasm */,
+				FC000010AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf */,
+				FC000011AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf */,
+				FC000012AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt */,
 				BB2B4DAB231D94C300CB578B /* hterm_all.js */,
 			);
 			path = terminal;
@@ -1920,6 +1935,9 @@
 				AA000502AF96D90D00FFB7A4 /* ghostty-web.js in Resources */,
 				AA000503AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt in Resources */,
 				AA000505AF96D90D00FFB7A4 /* ghostty-vt.wasm in Resources */,
+				FC000001AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
+				FC000002AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */,
+				FC000003AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1964,6 +1982,9 @@
 				BB000502AF96D90D00FFB7A4 /* ghostty-web.js in Resources */,
 				BB000503AF96D90D00FFB7A4 /* ghostty-web-VENDORED.txt in Resources */,
 				BB000505AF96D90D00FFB7A4 /* ghostty-vt.wasm in Resources */,
+				FC000004AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
+				FC000005AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */,
+				FC000006AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */,
 				BB38599A27BCEE6B000A1082 /* is.png in Resources */,
 				BB38599E27BCEE6B000A1082 /* circular.png in Resources */,
 				BB38599F27BCEE6B000A1082 /* icon1337.png in Resources */,
@@ -2015,6 +2036,9 @@
 				BBEF1A00268066D1001225BD /* ghostty-web.js in Resources */,
 				BBEF1A01268066D1001225BD /* ghostty-web-VENDORED.txt in Resources */,
 				BBEF1A02268066D1001225BD /* ghostty-vt.wasm in Resources */,
+				FC000007AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
+				FC000008AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-Bold.ttf in Resources */,
+				FC000009AF96D90D00FFB7A4 /* FiraCodeNerdFontMono-VENDORED.txt in Resources */,
 				BBEF1995268066D1001225BD /* sprite64.png in Resources */,
 				BBEF1996268066D1001225BD /* icon.png in Resources */,
 				BB38598127BCEC78000A1082 /* freeiosterminal.png in Resources */,

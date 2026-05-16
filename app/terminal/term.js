@@ -61,7 +61,7 @@ window.addEventListener('load', async () => {
             rows: 24,
             cursorBlink: true,
             fontSize: 15,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontFamily: '"FiraCode Nerd Font Mono", Menlo, Monaco, "Courier New", monospace',
             scrollback: 10000,
             smoothScrollDuration: 0,
             scrollbarWidth: 0,
@@ -216,11 +216,25 @@ function applyStyle({ foregroundColor, backgroundColor, fontFamily, fontSize, co
     term.options.cursorStyle = cursorShapeMap[cursorShape] || 'block';
 
     // Font/style changes alter cell metrics; refit and publish the new PTY size.
-    if (document.fonts?.load)
-        document.fonts.load(`${fontSize}px ${fontFamily}`).catch(() => {});
+    const fontReady = document.fonts?.load
+        ? document.fonts.load(`${fontSize}px ${cssFontFamily(fontFamily)}`).catch(() => {})
+        : Promise.resolve();
+    fontReady.finally(() => {
+        fit();
+        syncWindowSize();
+        syncScroll(true);
+    });
     fit();
     syncWindowSize();
     syncScroll(true);
+}
+
+function cssFontFamily(fontFamily) {
+    if (typeof fontFamily !== 'string' || fontFamily.length === 0)
+        return '"FiraCode Nerd Font Mono"';
+    if (fontFamily.includes(',') || /^(["']).*\1$/.test(fontFamily))
+        return fontFamily;
+    return `"${fontFamily.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
 function getCharacterSize() {

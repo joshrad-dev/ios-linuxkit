@@ -192,7 +192,7 @@ enum {
                     break;
                 case 1:
                     cell.detailTextLabel.text = UserPreferences.shared.fontFamilyUserFacingName;
-                    cell.detailTextLabel.font = [UIFont fontWithName:UserPreferences.shared.fontFamily size:cell.detailTextLabel.font.pointSize];
+                    cell.detailTextLabel.font = [UIFont fontWithDescriptor:UserPreferences.shared.approximateFont.fontDescriptor size:cell.detailTextLabel.font.pointSize];
                     break;
                 case 2: {
                     UserPreferences *prefs = [UserPreferences shared];

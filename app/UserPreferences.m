@@ -35,6 +35,7 @@ NSDictionary<NSString *, NSString *> *friendlyPreferenceReverseMapping;
 NSDictionary<NSString *, NSString *> *kvoProperties;
 
 static NSString *const kSystemMonospacedFontName = @"ui-monospace";
+static NSString *const kBundledTerminalFontFamilyName = @"FiraCode Nerd Font Mono";
 
 @interface UserPreferences () {
     BOOL _hostnameIsOverridden;
@@ -169,16 +170,9 @@ bool (*remove_user_default)(const char *name);
             kPreferenceThemeKey: @"Default",
             kHostnameOverrideKey: UIDevice.currentDevice.name,
         }];
-        // https://webkit.org/blog/10247/new-webkit-features-in-safari-13-1/
-        if (@available(iOS 13.4, *)) {
-            [_defaults registerDefaults:@{
-                kPreferenceFontFamilyKey: kSystemMonospacedFontName,
-            }];
-        } else {
-            [_defaults registerDefaults:@{
-                kPreferenceFontFamilyKey: @"Menlo",
-            }];
-        }
+        [_defaults registerDefaults:@{
+            kPreferenceFontFamilyKey: kBundledTerminalFontFamilyName,
+        }];
         get_all_defaults_keys = get_all_defaults_keys_impl;
         get_friendly_name = get_friendly_name_impl;
         get_underlying_name = get_underlying_name_impl;
@@ -345,7 +339,13 @@ bool (*remove_user_default)(const char *name);
 }
 
 - (NSString *)fontFamilyUserFacingName {
-    return [self.fontFamily isEqualToString:kSystemMonospacedFontName] ? @"System" : self.fontFamily;
+    if ([self.fontFamily isEqualToString:kSystemMonospacedFontName]) {
+        return @"System";
+    }
+    if ([self.fontFamily isEqualToString:kBundledTerminalFontFamilyName]) {
+        return @"Fira Code Nerd Font";
+    }
+    return self.fontFamily;
 }
 
 - (UIFont *)approximateFont {
@@ -355,6 +355,11 @@ bool (*remove_user_default)(const char *name);
         }
     }
     UIFont *font = [UIFont fontWithName:self.fontFamily size:self.fontSize.doubleValue];
+    if (font) {
+        return font;
+    }
+    UIFontDescriptor *descriptor = [UIFontDescriptor fontDescriptorWithFontAttributes:@{UIFontDescriptorFamilyAttribute: self.fontFamily}];
+    font = [UIFont fontWithDescriptor:descriptor size:self.fontSize.doubleValue];
     return font ? font : [UIFont fontWithName:@"Menlo" size:self.fontSize.doubleValue];
 }
 
