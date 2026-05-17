@@ -55,6 +55,7 @@ __attribute__((weak)) void *mem_ptr(struct mem *mem, addr_t addr, int type) {
 #ifdef GUEST_ARM64
 bool arm64_block_stats_enabled;
 static bool arm64_block_stats_dumped;
+static bool arm64_hot_trace_enabled;
 static bool arm64_eager_prechain_enabled;
 static bool arm64_eager_prechain_incoming_enabled;
 static _Atomic uint64_t arm64_block_stats_entries;
@@ -104,6 +105,7 @@ static uint64_t arm64_block_stats_hot_block_samples;
 static uint64_t arm64_block_stats_hot_block_evictions;
 static uint64_t arm64_block_stats_hot_edge_samples;
 static uint64_t arm64_block_stats_hot_edge_evictions;
+static uint64_t arm64_block_stats_hot_trace_candidate_edge_evictions;
 static _Atomic uint64_t arm64_block_stats_trace_edge_same_page;
 static _Atomic uint64_t arm64_block_stats_trace_edge_forward_same_page;
 static _Atomic uint64_t arm64_block_stats_trace_edge_forward_adjacent;
@@ -115,8 +117,18 @@ static _Atomic uint64_t arm64_block_stats_trace_edge_backward_same_page;
 static _Atomic uint64_t arm64_block_stats_trace_edge_self_loop;
 static _Atomic uint64_t arm64_block_stats_trace_edge_cross_page;
 static _Atomic uint64_t arm64_block_stats_trace_edge_unknown_slot;
+static _Atomic uint64_t arm64_block_stats_hot_trace_edge_samples;
+static _Atomic uint64_t arm64_block_stats_hot_trace_edge_candidate;
+static _Atomic uint64_t arm64_block_stats_hot_trace_edge_candidate_adjacent;
+static _Atomic uint64_t arm64_block_stats_hot_trace_edge_candidate_le16;
+static _Atomic uint64_t arm64_block_stats_hot_trace_edge_reject_unknown_slot;
+static _Atomic uint64_t arm64_block_stats_hot_trace_edge_reject_self_loop;
+static _Atomic uint64_t arm64_block_stats_hot_trace_edge_reject_backward;
+static _Atomic uint64_t arm64_block_stats_hot_trace_edge_reject_cross_page;
+static _Atomic uint64_t arm64_block_stats_hot_trace_edge_reject_far;
 static struct arm64_block_stats_hot_block arm64_block_stats_hot_blocks[ARM64_BLOCK_STATS_HOT_BLOCKS];
 static struct arm64_block_stats_hot_edge arm64_block_stats_hot_edges[ARM64_BLOCK_STATS_HOT_EDGES];
+static struct arm64_block_stats_hot_edge arm64_block_stats_hot_trace_candidate_edges[ARM64_BLOCK_STATS_HOT_EDGES];
 
 static bool env_enabled(const char *env) {
     return env != NULL && env[0] != '\0' && strcmp(env, "0") != 0;
@@ -156,40 +168,94 @@ static void arm64_block_stats_record_hot_block_locked(addr_t pc) {
     arm64_block_stats_hot_block_evictions++;
 }
 
-static void arm64_block_stats_record_hot_edge_locked(addr_t from, addr_t to, unsigned slot) {
-    arm64_block_stats_hot_edge_samples++;
+static void arm64_block_stats_record_edge_locked(struct arm64_block_stats_hot_edge edges[ARM64_BLOCK_STATS_HOT_EDGES],
+        uint64_t *evictions, addr_t from, addr_t to, unsigned slot) {
     for (int i = 0; i < ARM64_BLOCK_STATS_HOT_EDGES; i++) {
-        if (arm64_block_stats_hot_edges[i].count != 0 &&
-                arm64_block_stats_hot_edges[i].from == from &&
-                arm64_block_stats_hot_edges[i].to == to &&
-                arm64_block_stats_hot_edges[i].slot == slot) {
-            arm64_block_stats_hot_edges[i].count++;
+        if (edges[i].count != 0 &&
+                edges[i].from == from &&
+                edges[i].to == to &&
+                edges[i].slot == slot) {
+            edges[i].count++;
             return;
         }
     }
     for (int i = 0; i < ARM64_BLOCK_STATS_HOT_EDGES; i++) {
-        if (arm64_block_stats_hot_edges[i].count == 0) {
-            arm64_block_stats_hot_edges[i].from = from;
-            arm64_block_stats_hot_edges[i].to = to;
-            arm64_block_stats_hot_edges[i].slot = slot;
-            arm64_block_stats_hot_edges[i].count = 1;
+        if (edges[i].count == 0) {
+            edges[i].from = from;
+            edges[i].to = to;
+            edges[i].slot = slot;
+            edges[i].count = 1;
             return;
         }
     }
     int min_i = 0;
     for (int i = 1; i < ARM64_BLOCK_STATS_HOT_EDGES; i++) {
-        if (arm64_block_stats_hot_edges[i].count < arm64_block_stats_hot_edges[min_i].count)
+        if (edges[i].count < edges[min_i].count)
             min_i = i;
     }
-    arm64_block_stats_hot_edges[min_i].from = from;
-    arm64_block_stats_hot_edges[min_i].to = to;
-    arm64_block_stats_hot_edges[min_i].slot = slot;
-    arm64_block_stats_hot_edges[min_i].count++;
-    arm64_block_stats_hot_edge_evictions++;
+    edges[min_i].from = from;
+    edges[min_i].to = to;
+    edges[min_i].slot = slot;
+    edges[min_i].count++;
+    (*evictions)++;
+}
+
+static void arm64_block_stats_record_hot_edge_locked(addr_t from, addr_t to, unsigned slot) {
+    arm64_block_stats_hot_edge_samples++;
+    arm64_block_stats_record_edge_locked(arm64_block_stats_hot_edges,
+            &arm64_block_stats_hot_edge_evictions, from, to, slot);
+}
+
+static void arm64_block_stats_record_hot_trace_candidate_edge_locked(addr_t from, addr_t to, unsigned slot) {
+    arm64_block_stats_record_edge_locked(arm64_block_stats_hot_trace_candidate_edges,
+            &arm64_block_stats_hot_trace_candidate_edge_evictions, from, to, slot);
+}
+
+static void arm64_block_stats_count_hot_trace_edge(struct fiber_block *from, struct fiber_block *to, bool matched_slot, unsigned edge_slot) {
+    if (!arm64_hot_trace_enabled)
+        return;
+
+    atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_edge_samples, 1, memory_order_relaxed);
+    if (!matched_slot) {
+        atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_edge_reject_unknown_slot, 1, memory_order_relaxed);
+        return;
+    }
+    if (PAGE(from->addr) != PAGE(to->addr)) {
+        atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_edge_reject_cross_page, 1, memory_order_relaxed);
+        return;
+    }
+    if (from->addr == to->addr) {
+        atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_edge_reject_self_loop, 1, memory_order_relaxed);
+        return;
+    }
+    if (to->addr < from->addr) {
+        atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_edge_reject_backward, 1, memory_order_relaxed);
+        return;
+    }
+
+    addr_t delta = to->addr - from->addr;
+    if (delta > 64) {
+        atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_edge_reject_far, 1, memory_order_relaxed);
+        return;
+    }
+
+    atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_edge_candidate, 1, memory_order_relaxed);
+    if (to->addr == from->end_addr + 1)
+        atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_edge_candidate_adjacent, 1, memory_order_relaxed);
+    if (delta <= 16)
+        atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_edge_candidate_le16, 1, memory_order_relaxed);
+
+    arm64_block_stats_hot_lock_acquire();
+    arm64_block_stats_record_hot_trace_candidate_edge_locked(from->addr, to->addr, edge_slot);
+    arm64_block_stats_hot_lock_release();
 }
 
 void arm64_block_stats_set_enabled_from_env(const char *env) {
     arm64_block_stats_enabled = env_enabled(env);
+}
+
+void arm64_hot_trace_set_enabled_from_env(const char *env) {
+    arm64_hot_trace_enabled = env_enabled(env);
 }
 
 void arm64_eager_prechain_set_enabled_from_env(const char *env) {
@@ -235,17 +301,21 @@ void arm64_block_stats_dump_if_enabled(void) {
 
     struct arm64_block_stats_hot_block hot_blocks[ARM64_BLOCK_STATS_HOT_BLOCKS];
     struct arm64_block_stats_hot_edge hot_edges[ARM64_BLOCK_STATS_HOT_EDGES];
+    struct arm64_block_stats_hot_edge hot_trace_candidate_edges[ARM64_BLOCK_STATS_HOT_EDGES];
     uint64_t hot_block_samples;
     uint64_t hot_block_evictions;
     uint64_t hot_edge_samples;
     uint64_t hot_edge_evictions;
+    uint64_t hot_trace_candidate_edge_evictions;
     arm64_block_stats_hot_lock_acquire();
     memcpy(hot_blocks, arm64_block_stats_hot_blocks, sizeof(hot_blocks));
     memcpy(hot_edges, arm64_block_stats_hot_edges, sizeof(hot_edges));
+    memcpy(hot_trace_candidate_edges, arm64_block_stats_hot_trace_candidate_edges, sizeof(hot_trace_candidate_edges));
     hot_block_samples = arm64_block_stats_hot_block_samples;
     hot_block_evictions = arm64_block_stats_hot_block_evictions;
     hot_edge_samples = arm64_block_stats_hot_edge_samples;
     hot_edge_evictions = arm64_block_stats_hot_edge_evictions;
+    hot_trace_candidate_edge_evictions = arm64_block_stats_hot_trace_candidate_edge_evictions;
     arm64_block_stats_hot_lock_release();
 
     for (int i = 0; i < ARM64_BLOCK_STATS_HOT_BLOCKS; i++) {
@@ -266,9 +336,29 @@ void arm64_block_stats_dump_if_enabled(void) {
             }
         }
     }
+    for (int i = 0; i < ARM64_BLOCK_STATS_HOT_EDGES; i++) {
+        for (int j = i + 1; j < ARM64_BLOCK_STATS_HOT_EDGES; j++) {
+            if (hot_trace_candidate_edges[j].count > hot_trace_candidate_edges[i].count) {
+                struct arm64_block_stats_hot_edge tmp = hot_trace_candidate_edges[i];
+                hot_trace_candidate_edges[i] = hot_trace_candidate_edges[j];
+                hot_trace_candidate_edges[j] = tmp;
+            }
+        }
+    }
 
     fprintf(stderr,
-            "ARM64_BLOCK_HOT_STATS block_samples=%llu block_evictions=%llu edge_samples=%llu edge_evictions=%llu trace_edge_same_page=%llu trace_edge_forward_same_page=%llu trace_edge_forward_adjacent=%llu trace_edge_forward_le16=%llu trace_edge_forward_17_64=%llu trace_edge_forward_65_256=%llu trace_edge_forward_gt256=%llu trace_edge_backward_same_page=%llu trace_edge_self_loop=%llu trace_edge_cross_page=%llu trace_edge_unknown_slot=%llu",
+            "ARM64_BLOCK_HOT_STATS hot_trace_enabled=%u hot_trace_edge_samples=%llu hot_trace_edge_candidate=%llu hot_trace_edge_candidate_adjacent=%llu hot_trace_edge_candidate_le16=%llu hot_trace_edge_reject_unknown_slot=%llu hot_trace_edge_reject_self_loop=%llu hot_trace_edge_reject_backward=%llu hot_trace_edge_reject_cross_page=%llu hot_trace_edge_reject_far=%llu hot_trace_candidate_edge_evictions=%llu block_samples=%llu block_evictions=%llu edge_samples=%llu edge_evictions=%llu trace_edge_same_page=%llu trace_edge_forward_same_page=%llu trace_edge_forward_adjacent=%llu trace_edge_forward_le16=%llu trace_edge_forward_17_64=%llu trace_edge_forward_65_256=%llu trace_edge_forward_gt256=%llu trace_edge_backward_same_page=%llu trace_edge_self_loop=%llu trace_edge_cross_page=%llu trace_edge_unknown_slot=%llu",
+            arm64_hot_trace_enabled ? 1u : 0u,
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_edge_samples, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_edge_candidate, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_edge_candidate_adjacent, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_edge_candidate_le16, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_edge_reject_unknown_slot, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_edge_reject_self_loop, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_edge_reject_backward, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_edge_reject_cross_page, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_edge_reject_far, memory_order_relaxed),
+            (unsigned long long)hot_trace_candidate_edge_evictions,
             (unsigned long long)hot_block_samples,
             (unsigned long long)hot_block_evictions,
             (unsigned long long)hot_edge_samples,
@@ -295,6 +385,13 @@ void arm64_block_stats_dump_if_enabled(void) {
                 i, (unsigned long long)hot_edges[i].to,
                 i, hot_edges[i].slot,
                 i, (unsigned long long)hot_edges[i].count);
+    }
+    for (int i = 0; i < ARM64_BLOCK_STATS_HOT_EDGES; i++) {
+        fprintf(stderr, " hot_trace_candidate_edge%d_from=0x%llx hot_trace_candidate_edge%d_to=0x%llx hot_trace_candidate_edge%d_slot=%u hot_trace_candidate_edge%d_count=%llu",
+                i, (unsigned long long)hot_trace_candidate_edges[i].from,
+                i, (unsigned long long)hot_trace_candidate_edges[i].to,
+                i, hot_trace_candidate_edges[i].slot,
+                i, (unsigned long long)hot_trace_candidate_edges[i].count);
     }
     fprintf(stderr, "\n");
     fflush(stderr);
@@ -370,6 +467,8 @@ void arm64_block_stats_count_chained_entry(struct fiber_block *from, unsigned lo
     } else {
         atomic_fetch_add_explicit(&arm64_block_stats_trace_edge_cross_page, 1, memory_order_relaxed);
     }
+
+    arm64_block_stats_count_hot_trace_edge(from, to, matched_slot, edge_slot);
 
     arm64_block_stats_hot_lock_acquire();
     arm64_block_stats_record_hot_block_locked(to->addr);

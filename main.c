@@ -254,12 +254,14 @@ int main(int argc, char *const argv[]) {
     g_trace_faults = trace_faults && trace_faults[0] && strcmp(trace_faults, "0") != 0;
     extern void arm64_fusion_stats_set_enabled_from_env(const char *env);
     extern void arm64_block_stats_set_enabled_from_env(const char *env);
+    extern void arm64_hot_trace_set_enabled_from_env(const char *env);
     extern void arm64_eager_prechain_set_enabled_from_env(const char *env);
     extern void arm64_eager_prechain_incoming_set_enabled_from_env(const char *env);
     extern void arm64_internal_continue_set_enabled_from_env(const char *env);
     extern void arm64_internal_continue_taken_set_enabled_from_env(const char *env);
     arm64_fusion_stats_set_enabled_from_env(getenv("ISH_ARM64_FUSION_STATS"));
     arm64_block_stats_set_enabled_from_env(getenv("ISH_ARM64_BLOCK_STATS"));
+    arm64_hot_trace_set_enabled_from_env(getenv("ISH_ARM64_HOT_TRACE"));
     arm64_eager_prechain_set_enabled_from_env(getenv("ISH_ARM64_EAGER_PRECHAIN"));
     arm64_eager_prechain_incoming_set_enabled_from_env(getenv("ISH_ARM64_EAGER_PRECHAIN_INCOMING"));
     arm64_internal_continue_set_enabled_from_env(getenv("ISH_ARM64_INTERNAL_CONTINUE"));
