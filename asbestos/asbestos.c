@@ -157,6 +157,13 @@ static _Atomic uint64_t arm64_block_stats_hot_trace_record_guard_fail_slot;
 static _Atomic uint64_t arm64_block_stats_hot_trace_record_guard_fail_same_page;
 static _Atomic uint64_t arm64_block_stats_hot_trace_record_guard_fail_pc;
 static _Atomic uint64_t arm64_block_stats_hot_trace_record_guard_fail_null_gadget;
+static _Atomic uint64_t arm64_block_stats_hot_trace_record_dispatch_probes;
+static _Atomic uint64_t arm64_block_stats_hot_trace_record_dispatch_lock_busy;
+static _Atomic uint64_t arm64_block_stats_hot_trace_record_dispatch_hits;
+static _Atomic uint64_t arm64_block_stats_hot_trace_record_dispatch_misses;
+static _Atomic uint64_t arm64_block_stats_hot_trace_record_dispatch_guard_passes;
+static _Atomic uint64_t arm64_block_stats_hot_trace_record_dispatch_guard_fails;
+static _Atomic uint64_t arm64_block_stats_hot_trace_record_dispatch_fallbacks;
 static struct arm64_block_stats_hot_block arm64_block_stats_hot_blocks[ARM64_BLOCK_STATS_HOT_BLOCKS];
 static struct arm64_block_stats_hot_edge arm64_block_stats_hot_edges[ARM64_BLOCK_STATS_HOT_EDGES];
 static struct arm64_block_stats_hot_edge arm64_block_stats_hot_trace_candidate_edges[ARM64_BLOCK_STATS_HOT_EDGES];
@@ -408,7 +415,7 @@ void arm64_block_stats_dump_if_enabled(void) {
     }
 
     fprintf(stderr,
-            "ARM64_BLOCK_HOT_STATS hot_trace_enabled=%u hot_trace_edge_samples=%llu hot_trace_edge_candidate=%llu hot_trace_edge_candidate_adjacent=%llu hot_trace_edge_candidate_le16=%llu hot_trace_edge_reject_unknown_slot=%llu hot_trace_edge_reject_self_loop=%llu hot_trace_edge_reject_backward=%llu hot_trace_edge_reject_cross_page=%llu hot_trace_edge_reject_far=%llu hot_trace_record_create_attempts=%llu hot_trace_record_created=%llu hot_trace_record_live=%llu hot_trace_record_duplicates=%llu hot_trace_record_alloc_failed=%llu hot_trace_record_reject_capacity=%llu hot_trace_record_reject_non_adjacent=%llu hot_trace_record_reject_source_jetsam=%llu hot_trace_record_reject_target_jetsam=%llu hot_trace_record_reject_slot_mismatch=%llu hot_trace_record_reject_same_page_mismatch=%llu hot_trace_record_reject_invalidate_gen_changed=%llu hot_trace_record_retired=%llu hot_trace_record_retire_page=%llu hot_trace_record_retire_source=%llu hot_trace_record_retire_target=%llu hot_trace_record_retire_all=%llu hot_trace_record_guard_checks=%llu hot_trace_record_guard_passes=%llu hot_trace_record_guard_fail_disabled=%llu hot_trace_record_guard_fail_null_record=%llu hot_trace_record_guard_fail_unarmed=%llu hot_trace_record_guard_fail_retired=%llu hot_trace_record_guard_fail_source_jetsam=%llu hot_trace_record_guard_fail_target_jetsam=%llu hot_trace_record_guard_fail_invalidate_gen=%llu hot_trace_record_guard_fail_slot=%llu hot_trace_record_guard_fail_same_page=%llu hot_trace_record_guard_fail_pc=%llu hot_trace_record_guard_fail_null_gadget=%llu hot_trace_candidate_edge_evictions=%llu block_samples=%llu block_evictions=%llu edge_samples=%llu edge_evictions=%llu trace_edge_same_page=%llu trace_edge_forward_same_page=%llu trace_edge_forward_adjacent=%llu trace_edge_forward_le16=%llu trace_edge_forward_17_64=%llu trace_edge_forward_65_256=%llu trace_edge_forward_gt256=%llu trace_edge_backward_same_page=%llu trace_edge_self_loop=%llu trace_edge_cross_page=%llu trace_edge_unknown_slot=%llu",
+            "ARM64_BLOCK_HOT_STATS hot_trace_enabled=%u hot_trace_edge_samples=%llu hot_trace_edge_candidate=%llu hot_trace_edge_candidate_adjacent=%llu hot_trace_edge_candidate_le16=%llu hot_trace_edge_reject_unknown_slot=%llu hot_trace_edge_reject_self_loop=%llu hot_trace_edge_reject_backward=%llu hot_trace_edge_reject_cross_page=%llu hot_trace_edge_reject_far=%llu hot_trace_record_create_attempts=%llu hot_trace_record_created=%llu hot_trace_record_live=%llu hot_trace_record_duplicates=%llu hot_trace_record_alloc_failed=%llu hot_trace_record_reject_capacity=%llu hot_trace_record_reject_non_adjacent=%llu hot_trace_record_reject_source_jetsam=%llu hot_trace_record_reject_target_jetsam=%llu hot_trace_record_reject_slot_mismatch=%llu hot_trace_record_reject_same_page_mismatch=%llu hot_trace_record_reject_invalidate_gen_changed=%llu hot_trace_record_retired=%llu hot_trace_record_retire_page=%llu hot_trace_record_retire_source=%llu hot_trace_record_retire_target=%llu hot_trace_record_retire_all=%llu hot_trace_record_guard_checks=%llu hot_trace_record_guard_passes=%llu hot_trace_record_guard_fail_disabled=%llu hot_trace_record_guard_fail_null_record=%llu hot_trace_record_guard_fail_unarmed=%llu hot_trace_record_guard_fail_retired=%llu hot_trace_record_guard_fail_source_jetsam=%llu hot_trace_record_guard_fail_target_jetsam=%llu hot_trace_record_guard_fail_invalidate_gen=%llu hot_trace_record_guard_fail_slot=%llu hot_trace_record_guard_fail_same_page=%llu hot_trace_record_guard_fail_pc=%llu hot_trace_record_guard_fail_null_gadget=%llu hot_trace_record_dispatch_probes=%llu hot_trace_record_dispatch_lock_busy=%llu hot_trace_record_dispatch_hits=%llu hot_trace_record_dispatch_misses=%llu hot_trace_record_dispatch_guard_passes=%llu hot_trace_record_dispatch_guard_fails=%llu hot_trace_record_dispatch_fallbacks=%llu hot_trace_candidate_edge_evictions=%llu block_samples=%llu block_evictions=%llu edge_samples=%llu edge_evictions=%llu trace_edge_same_page=%llu trace_edge_forward_same_page=%llu trace_edge_forward_adjacent=%llu trace_edge_forward_le16=%llu trace_edge_forward_17_64=%llu trace_edge_forward_65_256=%llu trace_edge_forward_gt256=%llu trace_edge_backward_same_page=%llu trace_edge_self_loop=%llu trace_edge_cross_page=%llu trace_edge_unknown_slot=%llu",
             arm64_hot_trace_enabled ? 1u : 0u,
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_edge_samples, memory_order_relaxed),
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_edge_candidate, memory_order_relaxed),
@@ -449,6 +456,13 @@ void arm64_block_stats_dump_if_enabled(void) {
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_record_guard_fail_same_page, memory_order_relaxed),
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_record_guard_fail_pc, memory_order_relaxed),
             (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_record_guard_fail_null_gadget, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_record_dispatch_probes, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_record_dispatch_lock_busy, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_record_dispatch_hits, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_record_dispatch_misses, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_record_dispatch_guard_passes, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_record_dispatch_guard_fails, memory_order_relaxed),
+            (unsigned long long)atomic_load_explicit(&arm64_block_stats_hot_trace_record_dispatch_fallbacks, memory_order_relaxed),
             (unsigned long long)hot_trace_candidate_edge_evictions,
             (unsigned long long)hot_block_samples,
             (unsigned long long)hot_block_evictions,
@@ -1136,6 +1150,48 @@ static bool arm64_trace_record_guard_check_locked(struct asbestos *asbestos,
     return true;
 }
 
+static bool arm64_trace_record_dispatch_probe_locked(struct asbestos *asbestos,
+        struct fiber_block *source, struct fiber_block *target) {
+    if (!arm64_hot_trace_enabled)
+        return false;
+
+    atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_record_dispatch_probes, 1, memory_order_relaxed);
+    if (source == NULL || target == NULL || source->is_jetsam || target->is_jetsam) {
+        atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_record_dispatch_misses, 1, memory_order_relaxed);
+        return false;
+    }
+
+    for (unsigned slot = 0; slot <= 1; slot++) {
+        struct arm64_trace_record *record = arm64_trace_record_find_locked(source, slot, target);
+        if (record == NULL)
+            continue;
+        atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_record_dispatch_hits, 1, memory_order_relaxed);
+        if (arm64_trace_record_guard_check_locked(asbestos, record))
+            atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_record_dispatch_guard_passes, 1, memory_order_relaxed);
+        else
+            atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_record_dispatch_guard_fails, 1, memory_order_relaxed);
+        // This tranche deliberately stops at a guarded lookup. Always fall
+        // back to normal whole-block dispatch/chaining; no trace body exists.
+        atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_record_dispatch_fallbacks, 1, memory_order_relaxed);
+        return true;
+    }
+
+    atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_record_dispatch_misses, 1, memory_order_relaxed);
+    return false;
+}
+
+static void arm64_trace_record_dispatch_probe(struct asbestos *asbestos,
+        struct fiber_block *source, struct fiber_block *target) {
+    if (!arm64_hot_trace_enabled)
+        return;
+    if (trylock(&asbestos->lock) != 0) {
+        atomic_fetch_add_explicit(&arm64_block_stats_hot_trace_record_dispatch_lock_busy, 1, memory_order_relaxed);
+        return;
+    }
+    arm64_trace_record_dispatch_probe_locked(asbestos, source, target);
+    unlock(&asbestos->lock);
+}
+
 static void arm64_trace_record_maybe_create_locked(struct asbestos *asbestos,
         struct fiber_block *source, unsigned slot, struct fiber_block *target) {
     if (!arm64_hot_trace_enabled)
@@ -1596,6 +1652,9 @@ static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
             arm64_block_stats_count_loop_entry(block);
 #endif
         struct fiber_block *last_block = frame->last_block;
+#ifdef GUEST_ARM64
+        arm64_trace_record_dispatch_probe(asbestos, last_block, block);
+#endif
         if (last_block != NULL &&
                 !last_block->is_jetsam && !block->is_jetsam &&
                 (last_block->jump_ip[0] != NULL ||
