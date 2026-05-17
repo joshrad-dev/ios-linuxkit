@@ -209,16 +209,19 @@ struct file *ios_pty_open(nsobj_t *terminal_out) {
 }
 
 static __init int ios_pty_init(void) {
+    init_mkdir("/dev", 0755);
     init_mkdir("/dev/pts", 0755);
     int err = do_mount("devpts", "/dev/pts", "devpts", MS_SILENT, NULL);
-    if (err < 0) {
+    if (err < 0 && err != -EBUSY) {
         panic("ish: failed to mount devpts: %s", errname(err));
     }
     err = kern_path("/dev/pts/ptmx", 0, &ptmx_path);
+    if (err < 0)
+        err = kern_path("/dev/ptmx", 0, &ptmx_path);
     if (err < 0) {
         panic("ish: failed to acquire ptmx: %s", errname(err));
     }
     return 0;
 }
 
-device_initcall(ios_pty_init);
+late_initcall(ios_pty_init);

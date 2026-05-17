@@ -50,7 +50,7 @@ window.exports = {
     scrollToBottom() {},
     newScrollTop() {},
     updateStyle(nextStyle) {
-        styleState = {...styleState, ...nextStyle};
+        styleState = {...styleState, ...normalizeStyleUpdate(nextStyle)};
     },
     getCharacterSize: () => [0, 0],
     clearScrollback() {},
@@ -95,7 +95,6 @@ window.addEventListener('load', async () => {
             cursorStyle: cursorStyleForGhostty(styleState.cursorShape),
             fontFamily: styleState.fontFamily,
             fontSize: styleState.fontSize,
-            renderer: 'webgl',
             scrollbarWidth: 0,
             smoothScrollDuration: 0,
             theme: themeForGhostty(styleState),
@@ -163,7 +162,7 @@ function installBridgeExports() {
     };
 
     window.exports.updateStyle = async (nextStyle) => {
-        styleState = {...styleState, ...nextStyle};
+        styleState = {...styleState, ...normalizeStyleUpdate(nextStyle)};
         await loadConfiguredFont(styleState);
 
         if (term.options.fontFamily !== styleState.fontFamily)
@@ -192,6 +191,13 @@ function installBridgeExports() {
 
     window.exports.setUserGesture = () => {};
     window.exports.setAccessibilityEnabled = () => {};
+}
+
+function normalizeStyleUpdate(nextStyle) {
+    const style = {...(nextStyle || {})};
+    if (!Array.isArray(style.colorPaletteOverrides))
+        style.colorPaletteOverrides = undefined;
+    return style;
 }
 
 function installFocusBridge() {
