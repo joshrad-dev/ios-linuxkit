@@ -159,15 +159,18 @@ static NSString *const HANDLERS[] = {@"syncFocus", @"focus", @"newScrollHeight",
 
 - (void)_updateStyle {
     NSAssert(NSThread.isMainThread, @"This method needs to be called on the main thread");
-    if (!self.terminal.loaded)
-        return;
     UserPreferences *prefs = [UserPreferences shared];
-    if (_overrideFontSize == prefs.fontSize.doubleValue)
-        _overrideFontSize = 0;
     Palette *palette = prefs.palette;
     if (self.overrideAppearance != OverrideAppearanceNone) {
         palette = self.overrideAppearance == OverrideAppearanceLight ? prefs.theme.lightPalette : prefs.theme.darkPalette;
     }
+    UIColor *backgroundColor = [[UIColor alloc] ish_initWithHexString:palette.backgroundColor];
+    self.backgroundColor = backgroundColor;
+    self.scrollbarView.backgroundColor = backgroundColor;
+    if (!self.terminal.loaded)
+        return;
+    if (_overrideFontSize == prefs.fontSize.doubleValue)
+        _overrideFontSize = 0;
     NSMutableDictionary<NSString *, id> *themeInfo = [@{
         @"fontFamily": prefs.fontFamily,
         @"fontSize": @(self.effectiveFontSize),

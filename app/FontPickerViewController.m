@@ -20,12 +20,22 @@
     [super viewDidLoad];
     self.fontOptions = @[
         @{
-            @"name": @"Ghostty Web Default",
-            @"family": @"\"FiraCode Nerd Font Mono\", Menlo, Monaco, \"Courier New\", monospace",
+            @"name": @"Webterm Default",
+            @"family": @"ui-monospace, \"SFMono-Regular\", \"FiraCode Nerd Font\", \"FiraMono Nerd Font\", \"FiraCode Nerd Font Mono\", \"Fira Code\", \"Roboto Mono\", Menlo, Monaco, Consolas, \"Liberation Mono\", \"DejaVu Sans Mono\", \"Courier New\", monospace",
             @"previewFamily": @"FiraCode Nerd Font Mono",
         },
         @{
-            @"name": @"Fira Code Nerd Font",
+            @"name": @"FiraCode Nerd Font",
+            @"family": @"FiraCode Nerd Font",
+            @"previewFamily": @"FiraCode Nerd Font Mono",
+        },
+        @{
+            @"name": @"FiraMono Nerd Font",
+            @"family": @"FiraMono Nerd Font",
+            @"previewFamily": @"FiraCode Nerd Font Mono",
+        },
+        @{
+            @"name": @"FiraCode Nerd Font Mono",
             @"family": @"FiraCode Nerd Font Mono",
             @"previewFamily": @"FiraCode Nerd Font Mono",
         },
@@ -33,16 +43,6 @@
             @"name": @"System Monospace",
             @"family": @"ui-monospace",
             @"previewFamily": @"Menlo",
-        },
-        @{
-            @"name": @"Menlo",
-            @"family": @"Menlo",
-            @"previewFamily": @"Menlo",
-        },
-        @{
-            @"name": @"Courier New",
-            @"family": @"Courier New",
-            @"previewFamily": @"Courier New",
         },
     ];
 }

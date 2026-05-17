@@ -36,7 +36,8 @@ NSDictionary<NSString *, NSString *> *kvoProperties;
 
 static NSString *const kSystemMonospacedFontName = @"ui-monospace";
 static NSString *const kBundledTerminalFontFamilyName = @"FiraCode Nerd Font Mono";
-static NSString *const kGhosttyWebTerminalFontFamilyName = @"\"FiraCode Nerd Font Mono\", Menlo, Monaco, \"Courier New\", monospace";
+static NSString *const kLegacyGhosttyWebTerminalFontFamilyName = @"\"FiraCode Nerd Font Mono\", Menlo, Monaco, \"Courier New\", monospace";
+static NSString *const kWebtermTerminalFontFamilyName = @"ui-monospace, \"SFMono-Regular\", \"FiraCode Nerd Font\", \"FiraMono Nerd Font\", \"FiraCode Nerd Font Mono\", \"Fira Code\", \"Roboto Mono\", Menlo, Monaco, Consolas, \"Liberation Mono\", \"DejaVu Sans Mono\", \"Courier New\", monospace";
 
 @interface UserPreferences () {
     BOOL _hostnameIsOverridden;
@@ -172,7 +173,7 @@ bool (*remove_user_default)(const char *name);
             kHostnameOverrideKey: UIDevice.currentDevice.name,
         }];
         [_defaults registerDefaults:@{
-            kPreferenceFontFamilyKey: kGhosttyWebTerminalFontFamilyName,
+            kPreferenceFontFamilyKey: kWebtermTerminalFontFamilyName,
         }];
         get_all_defaults_keys = get_all_defaults_keys_impl;
         get_friendly_name = get_friendly_name_impl;
@@ -324,7 +325,12 @@ bool (*remove_user_default)(const char *name);
 
 // MARK: fontFamily
 - (NSString *)fontFamily {
-    return [_defaults objectForKey:kPreferenceFontFamilyKey];
+    NSString *fontFamily = [_defaults objectForKey:kPreferenceFontFamilyKey];
+    if ([fontFamily isEqualToString:kLegacyGhosttyWebTerminalFontFamilyName]) {
+        fontFamily = kWebtermTerminalFontFamilyName;
+        [_defaults setObject:fontFamily forKey:kPreferenceFontFamilyKey];
+    }
+    return fontFamily;
 }
 
 - (void)setFontFamily:(NSString *)fontFamily {
@@ -340,20 +346,29 @@ bool (*remove_user_default)(const char *name);
 }
 
 - (NSString *)fontFamilyUserFacingName {
-    if ([self.fontFamily isEqualToString:kGhosttyWebTerminalFontFamilyName]) {
-        return @"Ghostty Web Default";
+    if ([self.fontFamily isEqualToString:kWebtermTerminalFontFamilyName]) {
+        return @"Webterm Default";
     }
     if ([self.fontFamily isEqualToString:kSystemMonospacedFontName]) {
-        return @"System";
+        return @"System Monospace";
+    }
+    if ([self.fontFamily isEqualToString:@"FiraCode Nerd Font"]) {
+        return @"FiraCode Nerd Font";
+    }
+    if ([self.fontFamily isEqualToString:@"FiraMono Nerd Font"]) {
+        return @"FiraMono Nerd Font";
     }
     if ([self.fontFamily isEqualToString:kBundledTerminalFontFamilyName]) {
-        return @"Fira Code Nerd Font";
+        return @"FiraCode Nerd Font Mono";
     }
     return self.fontFamily;
 }
 
 - (UIFont *)approximateFont {
-    if ([self.fontFamily isEqualToString:kGhosttyWebTerminalFontFamilyName]) {
+    if ([self.fontFamily isEqualToString:kWebtermTerminalFontFamilyName] ||
+        [self.fontFamily isEqualToString:@"FiraCode Nerd Font"] ||
+        [self.fontFamily isEqualToString:@"FiraMono Nerd Font"] ||
+        [self.fontFamily isEqualToString:kBundledTerminalFontFamilyName]) {
         UIFont *font = [UIFont fontWithName:kBundledTerminalFontFamilyName size:self.fontSize.doubleValue];
         if (font) {
             return font;

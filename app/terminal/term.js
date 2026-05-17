@@ -25,7 +25,7 @@ let styleState = {
     foregroundColor: '#f0f0f0',
     backgroundColor: '#000000',
     cursorColor: undefined,
-    fontFamily: 'FiraCode Nerd Font Mono, monospace',
+    fontFamily: 'ui-monospace, "SFMono-Regular", "FiraCode Nerd Font", "FiraMono Nerd Font", "FiraCode Nerd Font Mono", "Fira Code", "Roboto Mono", Menlo, Monaco, Consolas, "Liberation Mono", "DejaVu Sans Mono", "Courier New", monospace',
     fontSize: 15,
     colorPaletteOverrides: undefined,
     blinkCursor: false,
@@ -388,6 +388,9 @@ function themeForGhostty(style) {
         foreground: style.foregroundColor,
         background: style.backgroundColor,
         cursor: style.cursorColor || style.foregroundColor,
+        cursorAccent: style.backgroundColor,
+        selectionBackground: style.foregroundColor,
+        selectionForeground: style.backgroundColor,
     };
     if (Array.isArray(style.colorPaletteOverrides)) {
         for (let i = 0; i < Math.min(ansiColorNames.length, style.colorPaletteOverrides.length); i++)

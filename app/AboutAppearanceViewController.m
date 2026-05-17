@@ -61,9 +61,11 @@ char *previewString = "# cat /proc/ish/colors\r\n"
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    [self updateTableAppearance];
     [UserPreferences.shared observe:@[@"theme", @"fontSize", @"fontFamily", @"colorScheme"]
                             options:0 owner:self usingBlock:^(typeof(self) self) {
         dispatch_async(dispatch_get_main_queue(), ^{
+            [self updateTableAppearance];
             [self.tableView reloadData];
         });
     }];
@@ -157,6 +159,7 @@ enum {
                 case 0:
                     _terminalView = [cell viewWithTag:1];
                     _terminalView.userInteractionEnabled = NO;
+                    [self updatePreviewBackground];
                     _terminalView.terminal = _terminal;
                     break;
                 case 1: {
@@ -242,9 +245,31 @@ enum {
     [self setNeedsStatusBarAppearanceUpdate];
 }
 
+- (void)updateTableAppearance {
+    if (@available(iOS 13, *)) {
+        self.overrideUserInterfaceStyle = UserPreferences.shared.userInterfaceStyle;
+        self.view.backgroundColor = UIColor.systemGroupedBackgroundColor;
+        self.tableView.backgroundColor = UIColor.systemGroupedBackgroundColor;
+    }
+    [self updatePreviewBackground];
+}
+
+- (void)updatePreviewBackground {
+    if (!_terminalView) {
+        return;
+    }
+    Palette *palette = UserPreferences.shared.palette;
+    if (_terminalView.overrideAppearance == OverrideAppearanceLight) {
+        palette = UserPreferences.shared.theme.lightPalette;
+    } else if (_terminalView.overrideAppearance == OverrideAppearanceDark) {
+        palette = UserPreferences.shared.theme.darkPalette;
+    }
+    _terminalView.backgroundColor = [[UIColor alloc] ish_initWithHexString:palette.backgroundColor];
+}
+
 - (void)changePreviewTheme:(UISegmentedControl *)sender {
     _terminalView.overrideAppearance = sender.selectedSegmentIndex ? OverrideAppearanceDark : OverrideAppearanceLight;
-    _terminalView.backgroundColor = [[UIColor alloc] ish_initWithHexString:(sender.selectedSegmentIndex ? UserPreferences.shared.theme.darkPalette : UserPreferences.shared.theme.lightPalette).backgroundColor];
+    [self updatePreviewBackground];
 }
 
 - (void)selectFont:(id)sender {
