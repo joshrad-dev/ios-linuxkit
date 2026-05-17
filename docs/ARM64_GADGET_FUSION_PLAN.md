@@ -503,6 +503,15 @@ Phase 4 default chained-transition cleanup tranche:
 - Focused smoke: default `/workspace/tmp/arm64-retchain-fastflag-rebased-default-20260517-123748.log` stayed `ARM64_BLOCK` silent; stats-enabled `/workspace/tmp/arm64-retchain-fastflag-rebased-stats-20260517-123748.log` emitted both `ARM64_BLOCK_STATS` and `ARM64_BLOCK_HOT_STATS`.
 - Runtime validation: default Alpine runtime coverage was **83 / 83 passing** at `/workspace/tmp/ish-arm64-runtime-coverage-20260517-123758.md`.
 
+Phase 4 bounded same-page prechain promotion tranche:
+
+- Promoted the existing bounded same-page eager prechain path to the Linux default by making `ISH_ARM64_EAGER_PRECHAIN` and nested `ISH_ARM64_EAGER_PRECHAIN_INCOMING` default-on when their Linux `main.c` env setters are called with an absent env var. Explicit `ISH_ARM64_EAGER_PRECHAIN=0` still disables both outgoing and incoming prechain, and `ISH_ARM64_EAGER_PRECHAIN_INCOMING=0` can keep outgoing-only behavior. The iOS/app path remains unchanged because those Linux env setters are not called there.
+- This is still a whole-block-start optimization, not a true trace: it patches only existing fake-IP `jump_ip` slots to exact `target->code` pointers, records the existing `jumps_from` back-reference, and relies on the normal disconnect/invalidation path to restore original fake IPs. It does not create interior pointers, trace records, guarded exits, or invalidation epoch changes.
+- Failed/default-off code kept out of this tranche: a stats-preserving fused-memory inline-chain prototype built and passed Node/Bun, but the A/B did not show a stable default win, so it was reverted before promotion.
+- Focused smoke: default `/workspace/tmp/arm64-prechain-default-20260517-130427.log` stayed `ARM64_BLOCK` silent; stats-enabled `/workspace/tmp/arm64-prechain-stats-20260517-130427.log` showed non-zero prechain counters (`prechain_patches=23389`, including `prechain_incoming_patches=20050`); explicit opt-out `/workspace/tmp/arm64-prechain-optout-stats-20260517-130427.log` kept all prechain counters zero.
+- Node/Bun validation: promoted default `/workspace/tmp/ish-arm64-node-bun-perf-20260517-130454.md` and explicit opt-out `/workspace/tmp/ish-arm64-node-bun-perf-20260517-130528.md` were both **10 / 10 passing**. The same-binary comparison was `33.635s` promoted default versus `34.587s` opt-out, about a **2.8%** wall-clock improvement in that table. Stats-enabled default `/workspace/tmp/ish-arm64-node-bun-perf-20260517-130603.md` was also **10 / 10 passing**.
+- Runtime validation: default Alpine runtime coverage was **83 / 83 passing** at `/workspace/tmp/ish-arm64-runtime-coverage-20260517-130725.md`.
+
 ## Validation gates
 
 For each implementation tranche:

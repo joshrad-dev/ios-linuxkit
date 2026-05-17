@@ -134,6 +134,12 @@ static bool env_enabled(const char *env) {
     return env != NULL && env[0] != '\0' && strcmp(env, "0") != 0;
 }
 
+static bool env_enabled_default(const char *env, bool default_enabled) {
+    if (env == NULL)
+        return default_enabled;
+    return env[0] != '\0' && strcmp(env, "0") != 0;
+}
+
 static void arm64_block_stats_hot_lock_acquire(void) {
     while (atomic_flag_test_and_set_explicit(&arm64_block_stats_hot_lock, memory_order_acquire)) {
     }
@@ -259,11 +265,11 @@ void arm64_hot_trace_set_enabled_from_env(const char *env) {
 }
 
 void arm64_eager_prechain_set_enabled_from_env(const char *env) {
-    arm64_eager_prechain_enabled = env_enabled(env);
+    arm64_eager_prechain_enabled = env_enabled_default(env, true);
 }
 
 void arm64_eager_prechain_incoming_set_enabled_from_env(const char *env) {
-    arm64_eager_prechain_incoming_enabled = env_enabled(env);
+    arm64_eager_prechain_incoming_enabled = env_enabled_default(env, true);
 }
 
 void arm64_block_stats_dump_if_enabled(void) {
