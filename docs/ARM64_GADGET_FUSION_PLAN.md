@@ -495,6 +495,14 @@ Phase 4 eligible-edge heavy-hitter tranche:
 - Runtime validation: default Alpine runtime coverage was **83 / 83 passing** at `/workspace/tmp/ish-arm64-runtime-coverage-20260517-092759.md`.
 - Next guardrail implication: candidate edge heat is now visible without loop/backward noise, but execution is still intentionally absent. Before building a first trace, add a representation/guard design tranche that defines a fail-closed trace record, guarded external exits back to fake-IP dispatch, and page invalidation ownership for every candidate segment.
 
+Phase 4 default chained-transition cleanup tranche:
+
+- Shortened the default `fiber_ret_chain` block-stats flag check by loading `arm64_block_stats_enabled` directly from the binary's data segment instead of going through a GOT pointer load. This removes one load from every default stats-disabled chained transition while keeping the `ISH_ARM64_BLOCK_STATS=1` callout and all existing diagnostics intact. It does not build traces, add guarded exits, alter invalidation epochs, store interior pointers in `jump_ip`, or change generated gadget streams.
+- Failed speed probes kept out of the code: outgoing eager prechain (`/workspace/tmp/ish-arm64-node-bun-perf-20260517-104936.md`, **10 / 10**, `34.212s`) and eager prechain plus internal-continue/taken (`/workspace/tmp/ish-arm64-node-bun-perf-20260517-105135.md`, **10 / 10**, `35.305s`) were slower than the earlier default reference (`/workspace/tmp/ish-arm64-node-bun-perf-20260517-092629.md`, `30.837s`), so neither was promoted.
+- Same-time A/B around the retained assembly shortcut was modest but favorable in aggregate: baseline default reports `/workspace/tmp/ish-arm64-node-bun-perf-20260517-121855.md` (`34.044s`) and `/workspace/tmp/ish-arm64-node-bun-perf-20260517-122116.md` (`34.078s`) versus optimized default reports `/workspace/tmp/ish-arm64-node-bun-perf-20260517-121941.md` (`33.755s`), `/workspace/tmp/ish-arm64-node-bun-perf-20260517-122041.md` (`33.689s`), and `/workspace/tmp/ish-arm64-node-bun-perf-20260517-122237.md` (`34.032s`). Treat this as a small hot-path cleanup rather than a major speedup claim.
+- Focused smoke: default `/workspace/tmp/arm64-retchain-fastflag-rebased-default-20260517-123748.log` stayed `ARM64_BLOCK` silent; stats-enabled `/workspace/tmp/arm64-retchain-fastflag-rebased-stats-20260517-123748.log` emitted both `ARM64_BLOCK_STATS` and `ARM64_BLOCK_HOT_STATS`.
+- Runtime validation: default Alpine runtime coverage was **83 / 83 passing** at `/workspace/tmp/ish-arm64-runtime-coverage-20260517-123758.md`.
+
 ## Validation gates
 
 For each implementation tranche:

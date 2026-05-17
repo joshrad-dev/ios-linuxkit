@@ -100,11 +100,11 @@ fiber_ret_chain:
 #if __APPLE__
     adrp x8, NAME(arm64_block_stats_enabled)@GOTPAGE
     ldr x8, [x8, NAME(arm64_block_stats_enabled)@GOTPAGEOFF]
-#else
-    adrp x8, :got:NAME(arm64_block_stats_enabled)
-    ldr x8, [x8, :got_lo12:NAME(arm64_block_stats_enabled)]
-#endif
     ldrb w8, [x8]
+#else
+    adrp x8, NAME(arm64_block_stats_enabled)
+    ldrb w8, [x8, #:lo12:NAME(arm64_block_stats_enabled)]
+#endif
     cbz w8, 1f
     save_c
     ldr x0, [_cpu, #LOCAL_last_block]
