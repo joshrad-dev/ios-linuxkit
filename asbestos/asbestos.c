@@ -714,6 +714,7 @@ static bool fiber_prechain_patch_slot(struct fiber_block *source, int i, struct 
     if (target_addr != target->addr || PAGE(source->addr) != PAGE(target->addr))
         return false;
     *source->jump_ip[i] = (unsigned long) target->code;
+    source->jump_ip_is_fake[i] = false;
     list_add(&target->jumps_from[i], &source->jumps_from_links[i]);
     return true;
 }
@@ -834,15 +835,23 @@ static void fiber_block_disconnect(struct asbestos *asbestos, struct fiber_block
     for (int i = 0; i <= 1; i++) {
         list_remove_safe(&block->page[i]);
         if (!list_null(&block->jumps_from_links[i])) {
-            if (block->jump_ip[i] != NULL)
+            if (block->jump_ip[i] != NULL) {
                 *block->jump_ip[i] = block->old_jump_ip[i];
+#ifdef GUEST_ARM64
+                block->jump_ip_is_fake[i] = true;
+#endif
+            }
             list_remove(&block->jumps_from_links[i]);
         }
 
         struct fiber_block *prev_block, *tmp;
         list_for_each_entry_safe(&block->jumps_from[i], prev_block, tmp, jumps_from_links[i]) {
-            if (prev_block->jump_ip[i] != NULL)
+            if (prev_block->jump_ip[i] != NULL) {
                 *prev_block->jump_ip[i] = prev_block->old_jump_ip[i];
+#ifdef GUEST_ARM64
+                prev_block->jump_ip_is_fake[i] = true;
+#endif
+            }
             list_remove(&prev_block->jumps_from_links[i]);
         }
     }
@@ -953,8 +962,14 @@ static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
         struct fiber_block *last_block = frame->last_block;
         if (last_block != NULL &&
                 !last_block->is_jetsam && !block->is_jetsam &&
+#ifdef GUEST_ARM64
+                (last_block->jump_ip_is_fake[0] ||
+                 last_block->jump_ip_is_fake[1])
+#else
                 (last_block->jump_ip[0] != NULL ||
-                 last_block->jump_ip[1] != NULL)) {
+                 last_block->jump_ip[1] != NULL)
+#endif
+                ) {
             ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_attempts);
             if (trylock(&asbestos->lock) == 0) {
                 // can't mint new pointers to a block that has been marked jetsam
@@ -964,6 +979,8 @@ static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
                         if (last_block->jump_ip[i] == NULL)
                             continue;
 #ifdef GUEST_ARM64
+                        if (!last_block->jump_ip_is_fake[i])
+                            continue;
                         addr_t target_addr;
                         if (!arm64_fake_jump_target(*last_block->jump_ip[i], &target_addr) ||
                                 target_addr != block->addr)
@@ -973,6 +990,9 @@ static int cpu_step_to_interrupt(struct cpu_state *cpu, struct tlb *tlb) {
                             continue;
 #endif
                         *last_block->jump_ip[i] = (unsigned long) block->code;
+#ifdef GUEST_ARM64
+                        last_block->jump_ip_is_fake[i] = false;
+#endif
                         ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patches);
                         if (i == 0)
                             ARM64_BLOCK_STAT_INC(arm64_block_stats_chain_patch_slot0);

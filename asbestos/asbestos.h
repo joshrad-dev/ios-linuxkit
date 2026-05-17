@@ -63,6 +63,12 @@ struct fiber_block {
     unsigned long *jump_ip[2];
     // original values of *jump_ip[]
     unsigned long old_jump_ip[2];
+#ifdef GUEST_ARM64
+    // True while jump_ip[i] still contains an ARM64 fake IP. Once patched to a
+    // whole-block code pointer, the C dispatcher can skip lock-heavy chaining
+    // attempts for that slot.
+    bool jump_ip_is_fake[2];
+#endif
     // blocks that jump to this block
     struct list jumps_from[2];
 

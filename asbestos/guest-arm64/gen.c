@@ -1041,8 +1041,10 @@ void gen_end(struct gen_state *state) {
         if (state->jump_ip[i] != 0) {
             block->jump_ip[i] = &block->code[state->jump_ip[i]];
             block->old_jump_ip[i] = *block->jump_ip[i];
+            block->jump_ip_is_fake[i] = true;
         } else {
             block->jump_ip[i] = NULL;
+            block->jump_ip_is_fake[i] = false;
         }
 
         list_init(&block->jumps_from[i]);
