@@ -11,7 +11,8 @@ This file lists workload-level tests that sit above the core runtime gate. Each 
 | Core runtime coverage | **83 / 83 passing** | Fast regression gate for startup, package manager, syscall ABI, ARM64 fixtures, and language smoke rows. | `/workspace/tmp/ish-arm64-runtime-coverage-20260517-130725.md`; [runtime validation](RUNTIME_VALIDATION.md) |
 | CLI corner cases | **27 pass / 2 unsupported / 0 fail** | TUI, DNS/HTTPS, Git clone, Docker diagnostics, ptrace/netlink visibility, Unix tooling. | `/workspace/tmp/ish-arm64-cli-corner-smoke-20260516-223418.md` |
 | npm CLI package lane | **16 / 16 passing** | Startup/help/version probes for fast-moving npm CLI packages. | `/workspace/tmp/ish-arm64-cli-package-runtime-coverage-20260515-200605.md` |
-| Node/Bun timing | **10 / 10 passing** | Startup/eval/JSON/FS timings for executor work. | Latest prechain promotion pair: `/workspace/tmp/ish-arm64-node-bun-perf-20260517-130454.md`, opt-out `/workspace/tmp/ish-arm64-node-bun-perf-20260517-130528.md` |
+| Node/Bun timing | **10 / 10 passing** | Startup/eval/JSON/FS timings for executor work. | Latest dormant-record pair: default `/workspace/tmp/ish-arm64-node-bun-perf-20260517-134035.md`, stats+hot-trace `/workspace/tmp/ish-arm64-node-bun-perf-20260517-134113.md` |
+| ARM64 hot-trace records | **4 / 4 passing** | Default-off silence and bounded sidecar record creation/retirement diagnostics without exact-output pollution. | `/workspace/tmp/ish-arm64-hot-trace-record-smoke-20260517-135840.md` |
 | Bun workspace/server | Install/start/listen passing | JS workspace install, recursive copies, JSC behavior, HTTP serving. | internal workload log |
 | `rcarmo/go-gte` | Convert/test/run passing | Go toolchain, Python model conversion, 128 MB model I/O, FP16/NEON paths. | [GO_GTE_PROGRESS.md](GO_GTE_PROGRESS.md) |
 | Benchmarks Game | 10/10 rows for selected runtimes | Cross-language compile/runtime corpus. | [BENCHMARKSGAME_HARNESS.md](BENCHMARKSGAME_HARNESS.md), [BENCHMARKSGAME_MATRIX.md](BENCHMARKSGAME_MATRIX.md) |
@@ -24,6 +25,7 @@ This file lists workload-level tests that sit above the core runtime gate. Each 
 | CLI corner cases | `make test-arm64-cli-corner-smoke ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=240 INSTALL_TIMEOUT_S=1200` |
 | npm CLI package lane | `make test-arm64-npm-cli-runtime-coverage ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=180 INSTALL_TIMEOUT_S=1800` |
 | Node/Bun timing | `make test-arm64-node-bun-perf ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=180`; add `ISH_ARM64_BLOCK_STATS=1 ISH_ARM64_HOT_TRACE=1` only for opt-in Phase 4 diagnostics. |
+| ARM64 hot-trace records | `make test-arm64-hot-trace-record-smoke REPORT_DIR=/workspace/tmp TIMEOUT_S=120`; override `HOT_TRACE_ROOTFS_LANES` only for rootfses with a known-working Node runtime. |
 | Benchmarks Game matrix | `tests/arm64/benchmarksgame/generate-matrix.py` |
 
 ## CLI corner-case coverage

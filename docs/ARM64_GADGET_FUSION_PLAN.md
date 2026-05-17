@@ -532,6 +532,12 @@ Phase 4 dormant adjacent trace-record sidecar tranche:
 - Node/Bun validation: default Alpine `/workspace/tmp/ish-arm64-node-bun-perf-20260517-134035.md` and `ISH_ARM64_BLOCK_STATS=1 ISH_ARM64_HOT_TRACE=1` Alpine `/workspace/tmp/ish-arm64-node-bun-perf-20260517-134113.md` were both **10 / 10 passing**. An accidental all-lane run at `/workspace/tmp/ish-arm64-node-bun-perf-20260517-133947.md` reproduced the existing Debian/glibc thread/V8 limitations and is not used as the Phase 4 gate.
 - Runtime validation: default Alpine runtime coverage was **83 / 83 passing** at `/workspace/tmp/ish-arm64-runtime-coverage-20260517-134200.md` with stats diagnostics disabled.
 
+Phase 4 dormant trace-record fixture tranche:
+
+- Added `tests/arm64/hot-trace-record-smoke.sh` and `make test-arm64-hot-trace-record-smoke` for sidecar-record guardrails outside exact-output runtime coverage. The target defaults to the Alpine fakefs through `HOT_TRACE_ROOTFS_LANES` so it does not inherit the broader Debian/glibc lane limitations used by some optional timing workflows.
+- The fixture covers default silence, hot-trace-only silence, stats-only zero record counters, and `ISH_ARM64_BLOCK_STATS=1 ISH_ARM64_HOT_TRACE=1` bounded record creation plus retirement accounting. Report `/workspace/tmp/ish-arm64-hot-trace-record-smoke-20260517-135840.md` was **4 / 4 passing** with `hot_trace_record_create_attempts=1627853`, `hot_trace_record_created=8192`, and `hot_trace_record_retired=7187` in the enabled row.
+- Scope remains non-executing: the fixture checks diagnostics and retirement counters only; it does not add a trace entry hook, executable trace code, guarded exits, or any `jump_ip`/ret-cache/inline-chain trace target.
+
 ## Validation gates
 
 For each implementation tranche:

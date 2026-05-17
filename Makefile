@@ -14,6 +14,7 @@ DEBIAN_SUITE ?= trixie
 NODE_VERSION ?= 24.14.1
 BUN_VERSION ?= 1.3.13
 ROOTFS_LANES ?= alpine=$(ROOTFS_DIR) debian=$(DEBIAN_ROOTFS_DIR)
+HOT_TRACE_ROOTFS_LANES ?= alpine=$(ROOTFS_DIR)
 CLI_PACKAGE_MANAGERS ?= npm bun pip
 REPORT_DIR ?= /workspace/tmp
 TIMEOUT_S ?= 120
@@ -30,6 +31,8 @@ help:
 	@echo "                                      Run coverage against debug binary"
 	@echo "  make test-arm64-internal-continue-fixtures"
 	@echo "                                      Run opt-in ARM64 internal-continue first-call-site fixtures"
+	@echo "  make test-arm64-hot-trace-record-smoke"
+	@echo "                                      Run dormant ARM64 hot-trace sidecar record smoke tests"
 	@echo "  make test-arm64-cli-corner-smoke   Run optional CLI/TUI/network/container corner-case smoke tests"
 	@echo "  make debian-arm64-fakefs           Build minimal Debian ARM64 fakefs lane"
 	@echo "  make test-arm64-npm-cli-runtime-coverage"
@@ -39,7 +42,7 @@ help:
 	@echo "  make test-arm64-cli-package-runtime-coverage-debug"
 	@echo "                                      Run CLI package coverage against debug binary"
 	@echo ""
-	@echo "Knobs: ROOTFS_DIR=$(ROOTFS_DIR) DEBIAN_ROOTFS_DIR=$(DEBIAN_ROOTFS_DIR) ROOTFS_LANES=$(ROOTFS_LANES) CLI_PACKAGE_MANAGERS=$(CLI_PACKAGE_MANAGERS) REPORT_DIR=$(REPORT_DIR) TIMEOUT_S=$(TIMEOUT_S) INSTALL_TIMEOUT_S=$(INSTALL_TIMEOUT_S)"
+	@echo "Knobs: ROOTFS_DIR=$(ROOTFS_DIR) DEBIAN_ROOTFS_DIR=$(DEBIAN_ROOTFS_DIR) ROOTFS_LANES=$(ROOTFS_LANES) HOT_TRACE_ROOTFS_LANES=$(HOT_TRACE_ROOTFS_LANES) CLI_PACKAGE_MANAGERS=$(CLI_PACKAGE_MANAGERS) REPORT_DIR=$(REPORT_DIR) TIMEOUT_S=$(TIMEOUT_S) INSTALL_TIMEOUT_S=$(INSTALL_TIMEOUT_S)"
 
 .PHONY: build-arm64-linux
 build-arm64-linux:
@@ -120,6 +123,15 @@ test-arm64-internal-continue-fixtures: build-arm64-linux
 	REPORT_DIR="$(REPORT_DIR)" \
 	TIMEOUT_S="$(TIMEOUT_S)" \
 	./tests/arm64/internal-continue-fixtures.sh
+
+.PHONY: test-arm64-hot-trace-record-smoke
+test-arm64-hot-trace-record-smoke: build-arm64-linux
+	ISH_BIN="$(CURDIR)/$(RELEASE_BUILD_DIR)/ish" \
+	ROOTFS="$(ROOTFS_DIR)" \
+	ROOTFS_LANES="$(HOT_TRACE_ROOTFS_LANES)" \
+	REPORT_DIR="$(REPORT_DIR)" \
+	TIMEOUT_S="$(TIMEOUT_S)" \
+	./tests/arm64/hot-trace-record-smoke.sh
 
 .PHONY: test-arm64-cli-corner-smoke
 test-arm64-cli-corner-smoke: build-arm64-linux
