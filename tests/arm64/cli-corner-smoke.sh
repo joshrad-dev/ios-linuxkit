@@ -74,7 +74,7 @@ ensure_guest_basics() {
 detect_platform() {
     local out="$HOST_TMP/platform.out"
     guest_capture "if command -v apk >/dev/null 2>&1; then echo alpine; elif command -v apt-get >/dev/null 2>&1; then echo debian; else echo unknown; fi" >"$out" 2>&1 || true
-    grep -Ev '^__ISH_STATUS:' "$out" | tail -1
+    grep -Ev '^(__ISH_STATUS:|[[:space:]]*$)' "$out" | tail -1
 }
 
 package_for_platform() {
@@ -100,7 +100,7 @@ package_available() {
     local out="$HOST_TMP/pkg-$pkg.out"
     case "$platform" in
         alpine)
-            guest_capture "apk update >/dev/null 2>&1 || true; apk search -x '$pkg' | grep -Eq '^$pkg(-[0-9]|$)'" >"$out" 2>&1 || true
+            guest_capture "apk update >/dev/null 2>&1 || true; apk policy '$pkg' | grep -q ." >"$out" 2>&1 || true
             ;;
         debian)
             guest_capture "apt-cache show '$pkg' >/dev/null 2>&1" >"$out" 2>&1 || true
@@ -249,6 +249,46 @@ run_lane() {
     run_test base "tty metadata" "tty >/dev/null 2>&1 || true; test -e /dev/null && test -e /dev/tty && echo tty-metadata-ok"
     run_test base "signals and pipes" "yes x | head -n 3 | wc -l | grep -qx '[[:space:]]*3' && echo pipe-signal-ok"
 
+    # Application smoke rows derived from the upstream iSH wiki
+    # "What works?" page. Keep these bounded to non-interactive version/help,
+    # small local transforms, or short HTTPS probes so they remain useful as a
+    # repeatable ARM64 runtime gate rather than a manual compatibility matrix.
+    run_optional_tool wiki-shell "bash command" "bash|bash" bash "bash -lc 'echo bash-ok'" "bash-ok"
+    run_optional_tool wiki-shell "zsh command" "zsh|zsh" zsh "zsh -fc 'echo zsh-ok'" "zsh-ok"
+    run_optional_tool wiki-shell "fish command" "fish|fish" fish "fish -c 'echo fish-ok'" "fish-ok"
+
+    run_optional_tool wiki-editor "nano version" "nano|nano" nano "nano --version | sed -n '1s/.*/nano-ok/p'" "nano-ok"
+    run_optional_tool wiki-editor "vim version" "vim|vim" vim "vim --version | sed -n '1s/.*/vim-ok/p'" "vim-ok"
+    run_optional_tool wiki-editor "neovim version" "neovim|neovim" nvim "nvim --version | sed -n '1s/.*/nvim-ok/p'" "nvim-ok"
+    run_optional_tool wiki-editor "ed append/write" "ed|ed" ed ": > /tmp/cli-corner-smoke/ed.txt; printf 'a\\nwiki-ed-ok\\n.\\nwq\\n' | ed -s /tmp/cli-corner-smoke/ed.txt >/dev/null 2>&1 && grep -qx wiki-ed-ok /tmp/cli-corner-smoke/ed.txt && echo ed-ok" "ed-ok"
+
+    run_optional_tool wiki-tui "screen version" "screen|screen" screen "screen -v | sed -n '1s/.*/screen-ok/p'" "screen-ok"
+    run_optional_tool wiki-tui "midnight commander version" "mc|mc" mc "TERM=xterm mc --version | sed -n '1s/.*/mc-ok/p'" "mc-ok"
+    run_optional_tool wiki-tui "mutt version" "mutt|mutt" mutt "mutt -v | sed -n '1s/.*/mutt-ok/p'" "mutt-ok"
+
+    run_optional_tool wiki-text "figlet render" "figlet|figlet" figlet "figlet OK | grep -q '_' && echo figlet-ok" "figlet-ok"
+    run_optional_tool wiki-text "links local dump" "links|links" links "printf '<html><body>wiki-links-ok</body></html>' >/tmp/cli-corner-smoke/wiki.html && links -dump /tmp/cli-corner-smoke/wiki.html | grep -qx ' *wiki-links-ok' && echo links-ok" "links-ok"
+    run_optional_tool wiki-text "lynx local dump" "lynx|lynx" lynx "printf '<html><body>wiki-lynx-ok</body></html>' >/tmp/cli-corner-smoke/wiki.html && lynx -dump /tmp/cli-corner-smoke/wiki.html | grep -q 'wiki-lynx-ok' && echo lynx-ok" "lynx-ok"
+    run_optional_tool wiki-text "w3m local dump" "w3m|w3m" w3m "printf '<html><body>wiki-w3m-ok</body></html>' >/tmp/cli-corner-smoke/wiki.html && w3m -dump /tmp/cli-corner-smoke/wiki.html | grep -qx 'wiki-w3m-ok' && echo w3m-ok" "w3m-ok"
+    run_optional_tool wiki-text "eza version" "eza|eza" eza "eza --version | sed -n '1s/.*/eza-ok/p'" "eza-ok"
+
+    run_optional_tool wiki-lang "perl eval" "perl|perl" perl "perl -e 'print qq(perl-ok\\n)'" "perl-ok"
+    run_optional_tool wiki-lang "ruby eval" "ruby|ruby" ruby "ruby -e 'puts :ruby_ok' | tr _ -" "ruby-ok"
+    run_optional_tool wiki-lang "gem version" "ruby|ruby" gem "gem --version | sed -n '1s/.*/gem-ok/p'" "gem-ok"
+    run_optional_tool wiki-lang "php eval" "php84|php-cli" php "if command -v php84 >/dev/null 2>&1; then php84 -r 'echo \"php-ok\\n\";'; else php -r 'echo \"php-ok\\n\";'; fi" "php-ok"
+    run_optional_tool wiki-lang "gawk arithmetic" "gawk|gawk" gawk "echo 7 | gawk '{print \$1 * 6}' | sed 's/^42$/gawk-ok/'" "gawk-ok"
+
+    run_optional_tool wiki-media "ffmpeg version" "ffmpeg|ffmpeg" ffmpeg "ffmpeg -hide_banner -version | sed -n '1s/.*/ffmpeg-ok/p'" "ffmpeg-ok"
+    run_optional_tool wiki-network "wget https" "wget|wget" wget "wget -q -O /tmp/cli-corner-smoke/example.html --timeout=15 https://example.com && grep -qi 'example domain' /tmp/cli-corner-smoke/example.html && echo wget-https-ok" "wget-https-ok"
+    run_optional_tool wiki-network "openssh client version" "openssh-client-default|openssh-client" ssh "ssh -V 2>&1 | sed -n '1s/.*/ssh-ok/p'" "ssh-ok"
+    run_optional_tool wiki-network "dropbear version" "dropbear|dropbear" dropbear "dropbear -V 2>&1 | sed -n '1s/.*/dropbear-ok/p'" "dropbear-ok"
+    run_optional_tool wiki-network "lftp version" "lftp|lftp" lftp "lftp --version | sed -n '1s/.*/lftp-ok/p'" "lftp-ok"
+    run_optional_tool wiki-network "adb version" "android-tools|android-tools-adb" adb "adb version | sed -n '1s/.*/adb-ok/p'" "adb-ok"
+
+    run_optional_tool wiki-data "openssl digest" "openssl|openssl" openssl "printf wiki | openssl dgst -sha256 | grep -q 12a435ec && echo openssl-ok" "openssl-ok"
+    run_optional_tool wiki-data "sqlite memory query" "sqlite|sqlite3" sqlite3 "sqlite3 :memory: 'select 6*7;' | sed 's/^42$/sqlite-ok/'" "sqlite-ok"
+    run_optional_tool wiki-data "yt-dlp version" "yt-dlp|yt-dlp" yt-dlp "yt-dlp --version | sed -n '1s/.*/yt-dlp-ok/p'" "yt-dlp-ok"
+
     run_optional_tool shell "nushell eval" "nushell|nushell" nu "nu -c 'print (1 + 2)'" "3"
     run_optional_tool shell "xonsh eval" "xonsh|xonsh" xonsh "xonsh -c 'print(1 + 2)'" "3"
 
@@ -261,7 +301,7 @@ run_lane() {
     run_optional_tool network "tcpdump interface list" "tcpdump|tcpdump" tcpdump "tcpdump -D 2>&1 | sed -n '1s/.*/tcpdump-list-ok/p'" "tcpdump-list-ok"
     run_optional_tool network "traceroute loopback" "traceroute|traceroute" traceroute "traceroute -m 1 -w 1 127.0.0.1 >/dev/null 2>&1; echo traceroute-ok" "traceroute-ok"
     run_optional_tool network "iproute2 link show" "iproute2|iproute2" ip "ip link show >/dev/null 2>&1 && echo iproute2-ok || { ip link show 2>&1 | grep -q 'Address family not supported' && echo iproute2-ok; }" "iproute2-ok"
-    run_optional_tool network "bind-tools dns lookup" "bind-tools|dnsutils" dig "dig +time=2 +tries=1 example.com A >/dev/null && echo dig-ok" "dig-ok"
+    run_optional_tool network "drill dns lookup" "drill|dnsutils" drill "drill example.com A >/dev/null && echo drill-ok" "drill-ok"
     run_optional_tool network "curl https github" "curl|curl" curl "sed -i '/[[:space:]]github[.]com$/d' /etc/hosts 2>/dev/null || true; curl -Is --connect-timeout 15 https://github.com >/tmp/cli-corner-smoke/curl-github.out 2>&1 && grep -Eq '^HTTP/[0-9.]+ 200|^HTTP/2 200' /tmp/cli-corner-smoke/curl-github.out && echo curl-https-ok" "curl-https-ok"
     run_optional_tool network "git https DNS diagnostic" "git|git" git "sed -i '/[[:space:]]github[.]com$/d' /etc/hosts 2>/dev/null || true; host=\$(getent hosts github.com | awk 'NR==1 {print \$1}'); test -n \"\$host\" && git ls-remote --heads https://github.com/octocat/Hello-World.git >/tmp/cli-corner-smoke/git-ls-remote.out 2>&1 && echo git-https-ok || { test -n \"\$host\" && grep -q 'Could not resolve host' /tmp/cli-corner-smoke/git-ls-remote.out && echo git-cares-dns-issue-ok; }" "git-https-ok\|git-cares-dns-issue-ok"
     run_optional_tool network "git https hosts workaround" "git|git" git "host=\$(getent hosts github.com | awk 'NR==1 {print \$1}'); test -n \"\$host\" || exit 1; cp /etc/hosts /tmp/cli-corner-smoke/hosts.bak 2>/dev/null || true; printf '%s github.com\\n' \"\$host\" >> /etc/hosts; git ls-remote --heads https://github.com/octocat/Hello-World.git >/tmp/cli-corner-smoke/git-hosts-ls-remote.out 2>&1; rc=\$?; cp /tmp/cli-corner-smoke/hosts.bak /etc/hosts 2>/dev/null || true; test \$rc -eq 0 && echo git-hosts-workaround-ok" "git-hosts-workaround-ok"
