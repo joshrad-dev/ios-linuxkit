@@ -102,7 +102,12 @@ void arm64_eager_prechain_set_enabled_from_env(const char *env) {
 }
 
 void arm64_eager_prechain_incoming_set_enabled_from_env(const char *env) {
-    arm64_eager_prechain_incoming_enabled = env_enabled_default(env, true);
+    // Keep incoming prechain opt-in: repeated fresh Go compiler builds exposed
+    // intermittent guest corruption when existing source blocks were patched
+    // from a later target compile path. Outgoing prechain remains the default
+    // bounded optimization; incoming scans can still be enabled explicitly for
+    // diagnostics with ISH_ARM64_EAGER_PRECHAIN_INCOMING=1.
+    arm64_eager_prechain_incoming_enabled = env_enabled_default(env, false);
 }
 
 void arm64_block_stats_dump_if_enabled(void) {
