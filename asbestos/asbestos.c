@@ -711,7 +711,8 @@ static bool arm64_fake_jump_target(unsigned long jump_ip, addr_t *target_addr) {
 }
 
 static bool fiber_prechain_patch_slot(struct fiber_block *source, int i, struct fiber_block *target) {
-    if (source->jump_ip[i] == NULL || source->is_jetsam || target->is_jetsam)
+    if (source->jump_ip[i] == NULL || !source->jump_ip_is_fake[i] ||
+            source->is_jetsam || target->is_jetsam)
         return false;
     addr_t target_addr;
     if (!arm64_fake_jump_target(*source->jump_ip[i], &target_addr))
@@ -754,6 +755,10 @@ static void fiber_prechain_incoming_same_page(struct asbestos *asbestos, struct 
     // behavior on dense code pages; the newest blocks are at the list head and
     // are the most likely direct predecessors. Only still-fake slots are
     // considered, so each source link is owned by at most one target list.
+    // Unlike outgoing prechain, this mutates older blocks that another guest
+    // thread may already be executing. Keep the opt-in path single-threaded.
+    if (__atomic_load_n(&asbestos->active_threads, __ATOMIC_RELAXED) > 1)
+        return;
     struct list *sources = blocks_list(asbestos, PAGE(block->addr), 0);
     if (list_null(sources))
         return;

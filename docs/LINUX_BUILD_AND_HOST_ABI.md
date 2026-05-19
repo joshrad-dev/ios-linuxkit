@@ -336,7 +336,7 @@ The practical host-facing ABI is now:
 
 - Linux/local env gates in `main.c` parse `ISH_ARM64_FUSION_STATS` and `ISH_ARM64_BLOCK_STATS`.
 - `ISH_ARM64_BLOCK_STATS=1` emits retained block/chaining/prechain diagnostics at process exit.
-- ARM64 outgoing same-page prechain remains enabled by default; incoming prechain is opt-in via `ISH_ARM64_EAGER_PRECHAIN_INCOMING=1` after repeated fresh Go compiler builds exposed intermittent guest corruption with incoming prechain enabled by default.
+- ARM64 outgoing same-page prechain remains enabled by default; incoming prechain is opt-in via `ISH_ARM64_EAGER_PRECHAIN_INCOMING=1` after repeated fresh Go compiler builds exposed intermittent guest corruption with incoming prechain enabled by default. The opt-in incoming path is guarded to skip older-block patching while multiple guest threads are active.
 - Speculative ARM64 hot-trace diagnostics were attempted but removed after showing no significant gains relative to overhead; there is no trace-record sidecar, guarded trace entry, or generated trace path.
 - Diagnostic `ARM64_*_STATS` output is intentionally kept out of exact-output runtime coverage gates.
 
