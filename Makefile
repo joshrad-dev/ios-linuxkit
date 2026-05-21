@@ -18,6 +18,9 @@ CLI_PACKAGE_MANAGERS ?= npm bun pip
 REPORT_DIR ?= /workspace/tmp
 TIMEOUT_S ?= 120
 INSTALL_TIMEOUT_S ?= 1200
+PERF_RUNS ?= 21
+PERF_CPU ?= 11
+HEAVY_TIMEOUT_S ?= 120
 
 .PHONY: help
 help:
@@ -38,8 +41,9 @@ help:
 	@echo "                                      Run second-stage npm/Bun/pip CLI package coverage"
 	@echo "  make test-arm64-cli-package-runtime-coverage-debug"
 	@echo "                                      Run CLI package coverage against debug binary"
+	@echo "  make perf-bench                      Pinned multi-run benchmark (p5/p50/p95)"
 	@echo ""
-	@echo "Knobs: ROOTFS_DIR=$(ROOTFS_DIR) DEBIAN_ROOTFS_DIR=$(DEBIAN_ROOTFS_DIR) ROOTFS_LANES=$(ROOTFS_LANES) CLI_PACKAGE_MANAGERS=$(CLI_PACKAGE_MANAGERS) REPORT_DIR=$(REPORT_DIR) TIMEOUT_S=$(TIMEOUT_S) INSTALL_TIMEOUT_S=$(INSTALL_TIMEOUT_S)"
+	@echo "Knobs: ROOTFS_DIR=$(ROOTFS_DIR) DEBIAN_ROOTFS_DIR=$(DEBIAN_ROOTFS_DIR) ROOTFS_LANES=$(ROOTFS_LANES) CLI_PACKAGE_MANAGERS=$(CLI_PACKAGE_MANAGERS) REPORT_DIR=$(REPORT_DIR) TIMEOUT_S=$(TIMEOUT_S) INSTALL_TIMEOUT_S=$(INSTALL_TIMEOUT_S) PERF_RUNS=$(PERF_RUNS) PERF_CPU=$(PERF_CPU)"
 
 .PHONY: build-arm64-linux
 build-arm64-linux:
@@ -112,6 +116,17 @@ test-arm64-node-bun-perf: build-arm64-linux
 	REPORT_DIR="$(REPORT_DIR)" \
 	TIMEOUT_S="$(TIMEOUT_S)" \
 	./tests/arm64/node-bun-perf-table.sh
+
+.PHONY: perf-bench
+perf-bench: build-arm64-linux
+	ISH_BIN="$(CURDIR)/$(RELEASE_BUILD_DIR)/ish" \
+	ROOTFS="$(ROOTFS_DIR)" \
+	PERF_RUNS="$(PERF_RUNS)" \
+	PERF_CPU="$(PERF_CPU)" \
+	TIMEOUT_S="$(TIMEOUT_S)" \
+	HEAVY_TIMEOUT_S="$(HEAVY_TIMEOUT_S)" \
+	REPORT_DIR="$(REPORT_DIR)" \
+	./tests/arm64/perf-bench.sh
 
 .PHONY: test-arm64-internal-continue-fixtures
 test-arm64-internal-continue-fixtures: build-arm64-linux
