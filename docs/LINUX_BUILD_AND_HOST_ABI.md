@@ -270,7 +270,7 @@ Directory reads now propagate or infer Linux `DT_*` values:
 
 Validation: a minimal Bun recursive `fs.cpSync` directory tree copy succeeds,
 the workspace bootstrap no longer logs the `ENOTSUP ... copyfile` warning, and staged
-runtime coverage remains **83 / 83 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260519-214307.md`), with the later `fchmodat2(AT_EMPTY_PATH)`, scheduler priority syscall, C# NativeAOT SDK-availability, high-address `MAP_NORESERVE` reservation-overlap probes, and Phase 4 default-off executor reconnaissance validation included in the staged gate.
+runtime coverage remains **83 / 83 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260519-214307.md`).
 
 ## Blocking I/O and exit cleanup
 
@@ -336,7 +336,7 @@ The practical host-facing ABI is now:
 
 - Linux/local env gates in `main.c` parse `ISH_ARM64_FUSION_STATS` and `ISH_ARM64_BLOCK_STATS`.
 - `ISH_ARM64_BLOCK_STATS=1` emits retained block/chaining/prechain diagnostics at process exit.
-- ARM64 outgoing and guarded incoming same-page prechain are enabled by default. Incoming prechain previously exposed intermittent fresh Go compiler corruption; it is now guarded to only patch still-fake slots and to skip older-block patching while multiple guest threads are active. Use `ISH_ARM64_EAGER_PRECHAIN_INCOMING=0` as an explicit diagnostic/safety opt-out.
+- ARM64 outgoing and guarded incoming same-page prechain are enabled by default. Use `ISH_ARM64_EAGER_PRECHAIN_INCOMING=0` as a diagnostic opt-out.
 - Speculative ARM64 hot-trace diagnostics were attempted but removed after showing no significant gains relative to overhead; there is no trace-record sidecar, guarded trace entry, or generated trace path.
 - Diagnostic `ARM64_*_STATS` output is intentionally kept out of exact-output runtime coverage gates.
 

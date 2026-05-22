@@ -25,7 +25,7 @@ This host can validate and stage the ARM64 Linux iSH production binary/rootfs ba
 - Alpine release: `3.23.4`
 - OpenJDK package baseline: `openjdk21-jdk-21.0.10_p7-r0`
 
-Note: later audit tags through `arm64-openjdk21-prod-20260513-r6` and subsequent audit commits through the current `go` branch were validated on the same rootfs with staged runtime coverage, default mixed-mode Java Hello, expanded Rust/Cargo coverage, socket ABI/`SCM_RIGHTS` coverage, `fchmodat2(AT_EMPTY_PATH)` and scheduler priority syscall coverage, high-address `MAP_NORESERVE` reservation-overlap regression coverage, C# NativeAOT SDK availability, Docker CLI/daemon unsupported diagnostics, opt-in ARM64 internal-continue/taken-internal validation, Alpine npm CLI package startup coverage, and ARM64 executor diagnostics. Speculative Phase 4 hot-trace candidate instrumentation was later removed; retained executor diagnostics are block/chaining/prechain counters only. The local deployment artifact above intentionally records the binary/rootfs staged at deployment time; regenerate the artifact directory if an external release wants the exact current branch payload. The working repository `origin` is configured for `rcarmo/ios-linuxkit`; verified bundle/patch exports remain a fallback handoff path.
+Note: subsequent audit commits validated expanded language/runtime coverage, socket ABI, syscall coverage, and executor optimisations on the same rootfs. The local artifact above records the binary/rootfs staged at deployment time; regenerate if an external release wants the exact current payload. `origin` is configured for `rcarmo/ios-linuxkit`.
 
 ## Post-deploy Java smoke
 

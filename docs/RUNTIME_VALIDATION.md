@@ -27,7 +27,6 @@ Related docs: [workload smoke tests](ARM64_WORKLOAD_SMOKE_TESTS.md), [syscall co
 | CLI corner cases | `make test-arm64-cli-corner-smoke ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=240 INSTALL_TIMEOUT_S=1200` | Current baseline **57 pass / 2 unsupported / 0 fail**. |
 | npm CLI package lane | `make test-arm64-npm-cli-runtime-coverage ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=180 INSTALL_TIMEOUT_S=1800` | Current baseline **16 / 16**. |
 | Node/Bun timing | `make test-arm64-node-bun-perf ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=180` | Timing/status table for executor changes. |
-| Pinned multi-run bench | `make perf-bench PERF_RUNS=21 PERF_CPU=11 REPORT_DIR=/workspace/tmp` | p5/p50/p95 over 21 pinned runs; use for before/after executor optimization. |
 
 ## Core coverage
 
@@ -60,8 +59,7 @@ Related docs: [workload smoke tests](ARM64_WORKLOAD_SMOKE_TESTS.md), [syscall co
 | CLI corner cases | TUI tools, DNS/HTTPS, GitHub clone, Docker CLI/daemon diagnostics, `strace`, `lsof`, netlink visibility. | **57 pass / 2 unsupported / 0 fail**. `dig` DNS now passes through real UDP; Docker daemon/container rows are unsupported without container kernel primitives. |
 | npm CLI package lane | Unauthenticated install/startup/help/version probes for npm-installed CLIs. | **16 / 16** in Alpine npm lane. Debian/glibc lane remains blocked by thread/libuv assertions. |
 | Node/Bun perf | Timing table for executor changes and optional block/prechain statistics. | Use before/after dispatch optimization work. |
-| Pinned multi-run bench | p5/p50/p95 over ≥21 pinned-CPU runs; required before claiming an executor speedup. | Baseline: `/workspace/tmp/ish-arm64-perf-bench-20260521-232801.md`. Post-perf-pass (Phase 1+2): shell loop 500 −6.6%, Bun JSON −2.3%, shell startup −2%. |
-| ARM64 executor diagnostics | `ISH_ARM64_BLOCK_STATS=1` and `ISH_ARM64_FUSION_STATS=1` counters. | Opt-in only; do not run exact-output runtime coverage with these diagnostics because they intentionally write `ARM64_*_STATS` lines. Speculative hot-trace diagnostics and sidecar records were attempted but removed after showing no significant gains relative to overhead. |
+| ARM64 executor diagnostics | `ISH_ARM64_BLOCK_STATS=1` and `ISH_ARM64_FUSION_STATS=1` counters. | Opt-in only; do not run exact-output runtime coverage with these diagnostics because they intentionally write `ARM64_*_STATS` lines. |
 | NativeAOT publish | Full `dotnet publish -p:PublishAot=true`. | Opt-in only via `ISH_ARM64_DOTNET_AOT_PUBLISH=1`; current focused probes stall in Roslyn `csc` after restore. |
 
 ## Failure rules
@@ -75,15 +73,6 @@ A row is not a pass when any of these happen:
 
 When fixing a runtime bug, add or update a focused row in the relevant harness so the failure stays covered.
 
-## 2026-05-19 Go compiler validation note
+## Go compiler note
 
-Fresh Go compiler builds are a high-value ARM64 executor stress test. Alpine 3.23's `go` package provides standard-library source but no precompiled `/usr/lib/go/pkg/linux_arm64` archives, so cold-cache `go run` can exceed the historical 240s row timeout. Use `TIMEOUT_S=600` when running full runtime coverage on a cold Go cache.
-
-The Go compiler corruption tracked on the `go` branch was fixed by hardening ARM64 incoming eager prechain and then re-enabling the guarded path by default. Validation evidence before default promotion:
-
-- default with incoming disabled: fresh `go build` stress **4 / 4** plus audit **3 / 3**;
-- warm relink stress: **3 / 3**;
-- guarded `ISH_ARM64_EAGER_PRECHAIN_INCOMING=1` fresh stress: **4 / 4** with nonzero incoming patches;
-- full runtime coverage: **83 / 83** at `/workspace/tmp/ish-arm64-runtime-coverage-20260519-214307.md`.
-
-After default promotion, re-run fresh Go stress and full coverage with `ISH_ARM64_EAGER_PRECHAIN_INCOMING` unset; keep `ISH_ARM64_EAGER_PRECHAIN_INCOMING=0` as a diagnostic/safety opt-out.
+Alpine 3.23's `go` package provides standard-library source but no precompiled `/usr/lib/go/pkg/linux_arm64` archives, so cold-cache `go run` can exceed the standard timeout. Use `TIMEOUT_S=600` when running full coverage on a cold Go cache. ARM64 incoming eager prechain is enabled by default; `ISH_ARM64_EAGER_PRECHAIN_INCOMING=0` is available as a diagnostic opt-out.

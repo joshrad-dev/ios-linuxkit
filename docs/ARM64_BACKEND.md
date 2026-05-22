@@ -519,7 +519,7 @@ Major milestones:
 6. **Rust/uv support**: FUTEX_WAIT_BITSET, PMULL, BFM, demand-mapped reads
 7. **Host integration**: ISHShellExecutor, DebugServer, Native Offload, Bind Mounts
 8. **Stability**: 50+ bug fixes for concurrency, memory leaks, use-after-free, deadlocks
-9. **Executor performance pass** (2026-05-22, `go` branch): pinned multi-run benchmark harness (`make perf-bench`, p5/p50/p95); adjacent same-page `fiber_ret_chain` fast path (`d96e6642`) covering ~69% of chained transitions, skipping the `mem_changes` TLB staleness check when both source and target blocks are on the same guest page; `GEN_INTERNAL_CONTINUE_MAX` raised 4→6. Net: −6.6% shell loop, −2.3% Bun JSON. Explored and measured-negative: IR branch (median −2.7%), LDP/STP gadget fusion, full same-page skip (JS/GC loops), simple TLB hash (large-VA aliasing).
+9. **Executor performance pass** (2026-05-22): adjacent same-page `fiber_ret_chain` fast path; `GEN_INTERNAL_CONTINUE_MAX` 4→6. Net: −6.6% shell loop, −2.3% Bun JSON.
 
 ---
 
