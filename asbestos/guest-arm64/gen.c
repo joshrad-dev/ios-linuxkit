@@ -927,8 +927,6 @@ extern void gadget_stp64_imm(void);
 extern void gadget_stp32_imm(void);
 extern void gadget_ldp64_imm_fast(void);
 extern void gadget_stp64_imm_fast(void);
-extern void gadget_fused_stp64_prologue(void);
-extern void gadget_fused_ldp64_epilogue(void);
 extern void gadget_ldp32_imm_fast(void);
 extern void gadget_ldpsw_imm_fast(void);
 extern void gadget_stp32_imm_fast(void);
@@ -3485,22 +3483,6 @@ static int gen_ldst(struct gen_state *state, uint32_t insn) {
         }
 
         // Pre/post-indexed: use separate calc_addr + ldp/stp + writeback
-
-        // Fast path: fused single-gadget for canonical function frame patterns.
-        // STP x29,x30,[SP,#imm]!  (is_pre, L=0, is64, rt=29, rt2=30, rn=31)
-        if (!L && is64 && is_pre && !is_ldpsw && rn == 31 && rt == 29 && rt2 == 30 &&
-                offset >= -512 && offset <= 0 && (offset & 7) == 0) {
-            gen(state, (unsigned long) gadget_fused_stp64_prologue);
-            gen(state, (uint64_t)(int16_t)offset);
-            return 1;
-        }
-        // LDP x29,x30,[SP],#imm  (is_post, L=1, is64, rt=29, rt2=30, rn=31)
-        if (L && is64 && is_post && !is_ldpsw && rn == 31 && rt == 29 && rt2 == 30 &&
-                offset >= 0 && offset <= 504 && (offset & 7) == 0) {
-            gen(state, (unsigned long) gadget_fused_ldp64_epilogue);
-            gen(state, (uint64_t)(int16_t)offset);
-            return 1;
-        }
 
         // Step 1: Calculate address
         if (is_post) {
