@@ -272,7 +272,6 @@ static NSMapTable<NSUUID *, Terminal *> *terminalsByUUID;
         }
     });
 #endif
-    [self.webView evaluateJavaScript:@"exports.setUserGesture()" completionHandler:nil];
     [self.scrollToBottomTask schedule];
 }
 
