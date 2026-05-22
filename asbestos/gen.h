@@ -6,7 +6,7 @@
 #include "asbestos/asbestos.h"
 #include "emu/tlb.h"
 
-#define GEN_INTERNAL_CONTINUE_MAX 4
+#define GEN_INTERNAL_CONTINUE_MAX 6
 #define GEN_INTERNAL_CONTINUE_BUDGET_INSNS 2
 
 struct gen_state {
