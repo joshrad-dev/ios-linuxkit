@@ -100,6 +100,24 @@ static NSMapTable<NSUUID *, Terminal *> *terminalsByUUID;
 - (WKWebView *)webView {
     if (_webView == nil) {
         WKWebViewConfiguration *config = [WKWebViewConfiguration new];
+        NSString *bootstrapStyleJSON = self.bootstrapStyleJSON ?: @"{}";
+        NSString *bootstrapStyleScript = [NSString stringWithFormat:
+            @"(() => {"
+             "const style = %@;"
+             "window.__terminalInitialStyle = style;"
+             "const apply = () => {"
+                "const root = document.documentElement;"
+                "if (!root) return;"
+                "if (style.backgroundColor) root.style.setProperty('--terminal-background', style.backgroundColor);"
+                "if (style.foregroundColor) root.style.setProperty('--terminal-foreground', style.foregroundColor);"
+             "};"
+             "apply();"
+             "document.addEventListener('DOMContentLoaded', apply, {once: true});"
+            "})();", bootstrapStyleJSON];
+        WKUserScript *bootstrapStyleUserScript = [[WKUserScript alloc] initWithSource:bootstrapStyleScript
+                                                                        injectionTime:WKUserScriptInjectionTimeAtDocumentStart
+                                                                     forMainFrameOnly:YES];
+        [config.userContentController addUserScript:bootstrapStyleUserScript];
         [config.userContentController addScriptMessageHandler:self name:@"load"];
         [config.userContentController addScriptMessageHandler:self name:@"log"];
         [config.userContentController addScriptMessageHandler:self name:@"sendInput"];

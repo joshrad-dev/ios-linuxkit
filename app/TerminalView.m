@@ -108,6 +108,7 @@ static NSString *const HANDLERS[] = {@"syncFocus", @"focus", @"newScrollHeight",
     _terminal = terminal;
     if (_terminal == nil)
         return;
+    [self _updateStyle];
     [_terminal addObserver:self forKeyPath:@"loaded" options:NSKeyValueObservingOptionInitial context:nil];
     [self installTerminalView];
 }
@@ -167,8 +168,6 @@ static NSString *const HANDLERS[] = {@"syncFocus", @"focus", @"newScrollHeight",
     UIColor *backgroundColor = [[UIColor alloc] ish_initWithHexString:palette.backgroundColor];
     self.backgroundColor = backgroundColor;
     self.scrollbarView.backgroundColor = backgroundColor;
-    if (!self.terminal.loaded)
-        return;
     if (_overrideFontSize == prefs.fontSize.doubleValue)
         _overrideFontSize = 0;
     NSMutableDictionary<NSString *, id> *themeInfo = [@{
@@ -184,6 +183,9 @@ static NSString *const HANDLERS[] = {@"syncFocus", @"focus", @"newScrollHeight",
         themeInfo[@"colorPaletteOverrides"] = palette.colorPaletteOverrides;
     }
     NSString *json = [[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:themeInfo options:0 error:nil] encoding:NSUTF8StringEncoding];
+    self.terminal.bootstrapStyleJSON = json;
+    if (!self.terminal.loaded)
+        return;
     [self.terminal.webView evaluateJavaScript:[NSString stringWithFormat:@"exports.updateStyle(%@)", json] completionHandler:^(id result, NSError *error){
         [self updateFloatingCursorSensitivity];
     }];

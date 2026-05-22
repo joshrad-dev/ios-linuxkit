@@ -30,12 +30,18 @@
     font-display: block;
 }
 
+html {
+    --terminal-background: transparent;
+    --terminal-foreground: #f0f0f0;
+}
+
 html,
 body {
     margin: 0;
     width: 100%;
     height: 100%;
-    background: transparent;
+    background: var(--terminal-background);
+    color: var(--terminal-foreground);
     overflow: hidden;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
@@ -50,7 +56,8 @@ body {
     left: 0;
     right: 0;
     overflow: hidden;
-    background: transparent;
+    background: var(--terminal-background);
+    color: var(--terminal-foreground);
     outline: none;
     text-rendering: optimizeLegibility;
     font-variant-ligatures: normal;

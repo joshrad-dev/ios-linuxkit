@@ -12,5 +12,5 @@ Local iOS patch:
 - app/terminal/term.js calls init() without a path so ghostty-web uses its
   embedded data: URL WASM. WKWebView rejects fetch() for the standalone local
   file:// ghostty-vt.wasm in this app bundle.
-- app/terminal/term.js requests the experimental WebGL renderer. Upstream
-  falls back to Canvas2D when WebGL2 is unavailable.
+- app/terminal/term.js keeps the default Canvas2D renderer for iOS stability
+  and caps the iPhone backing scale to reduce Canvas work on 3x displays.

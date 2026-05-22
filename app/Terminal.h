@@ -32,6 +32,7 @@ struct tty;
 - (void)destroy;
 
 @property (readonly) WKWebView *webView;
+@property (nonatomic, copy) NSString *bootstrapStyleJSON;
 @property (nonatomic) BOOL enableVoiceOverAnnounce;
 // Use KVO on this
 @property (readonly) BOOL loaded;

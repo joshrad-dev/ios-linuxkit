@@ -31,6 +31,8 @@ let styleState = {
     blinkCursor: false,
     cursorShape: 'BLOCK',
 };
+styleState = {...styleState, ...normalizeStyleUpdate(window.__terminalInitialStyle)};
+applyDocumentStyle(styleState);
 let resizeObserver;
 let pendingResizePreview = false;
 let pendingResizeCommitTimeout;
@@ -51,6 +53,7 @@ window.exports = {
     newScrollTop() {},
     updateStyle(nextStyle) {
         styleState = {...styleState, ...normalizeStyleUpdate(nextStyle)};
+        applyDocumentStyle(styleState);
     },
     getCharacterSize: () => [0, 0],
     clearScrollback() {},
@@ -87,18 +90,20 @@ window.addEventListener('load', async () => {
 
         await init();
 
-        term = new Terminal({
+        const terminalOptions = {
             cols: 80,
             rows: 24,
             allowTransparency: true,
             cursorBlink: styleState.blinkCursor,
             cursorStyle: cursorStyleForGhostty(styleState.cursorShape),
+            devicePixelRatio: preferredDevicePixelRatio(),
             fontFamily: styleState.fontFamily,
             fontSize: styleState.fontSize,
             scrollbarWidth: 0,
             smoothScrollDuration: 0,
             theme: themeForGhostty(styleState),
-        });
+        };
+        term = new Terminal(terminalOptions);
         window.term = term;
 
         term.onData((data) => {
@@ -163,6 +168,7 @@ function installBridgeExports() {
 
     window.exports.updateStyle = async (nextStyle) => {
         styleState = {...styleState, ...normalizeStyleUpdate(nextStyle)};
+        applyDocumentStyle(styleState);
         await loadConfiguredFont(styleState);
 
         if (term.options.fontFamily !== styleState.fontFamily)
@@ -198,6 +204,21 @@ function normalizeStyleUpdate(nextStyle) {
     if (!Array.isArray(style.colorPaletteOverrides))
         style.colorPaletteOverrides = undefined;
     return style;
+}
+
+function applyDocumentStyle(style) {
+    if (style.backgroundColor)
+        document.documentElement.style.setProperty('--terminal-background', style.backgroundColor);
+    if (style.foregroundColor)
+        document.documentElement.style.setProperty('--terminal-foreground', style.foregroundColor);
+}
+
+function preferredDevicePixelRatio() {
+    // Canvas2D was kept for iPad rendering stability. On 3x iPhones, a full
+    // DPR canvas is expensive and was the likely source of whole-app slowness.
+    if (/\biPhone\b/.test(navigator.userAgent || '') || navigator.platform === 'iPhone')
+        return Math.min(window.devicePixelRatio || 1, 2);
+    return window.devicePixelRatio || 1;
 }
 
 function installFocusBridge() {
