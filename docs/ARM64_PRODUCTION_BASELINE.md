@@ -1,11 +1,11 @@
 # ios-linuxkit ARM64 production baseline
 
 Date: 2026-05-10
-Reviewed: 2026-05-20
+Reviewed: 2026-05-22
 
 ## Known-good code
 
-- Code baseline: current `go` branch at the 2026-05-20 documentation review, successor to tagged validation point `arm64-openjdk21-prod-20260513-r6`; this pass includes expanded language/runtime coverage, ARM64 sysreg/FP16 conversion fixes, bounds-checked path/symlink expansion, guest-signal-aware blocking I/O/exit cleanup, socket ABI hardening through ARM64 `SCM_RIGHTS` control-message validation, `fchmodat2(AT_EMPTY_PATH)` and scheduler priority syscall coverage, npm CLI package startup coverage, Docker CLI/daemon unsupported diagnostics, opt-in ARM64 internal-continue/taken-internal validation, C# NativeAOT SDK availability, reservation-aware high-address `MAP_NORESERVE` handling, and retained ARM64 executor block/chaining/prechain diagnostics. Speculative hot-trace instrumentation was attempted but removed after showing no significant gains relative to overhead.
+- Code baseline: `go` branch at 2026-05-22, successor to tagged validation point `arm64-openjdk21-prod-20260513-r6`. This pass adds all prior fixes plus an executor performance pass: pinned multi-run benchmark harness (`make perf-bench`, p5/p50/p95 reporting), adjacent same-page `fiber_ret_chain` fast path skipping `mem_changes` for ~69% of chained transitions (−6.6% shell loop, −2.3% Bun JSON), and `GEN_INTERNAL_CONTINUE_MAX` raised 4→6. Explored and reverted: `BUDGET_INSNS=8` (2–4× regression on dense-branch runtimes), LDP/STP prologue/epilogue fusion (I-cache pressure), full same-page `mem_changes` skip (JS/GC loops regressed Bun JSON +11.7%), and simple TLB hash (32 MB stride aliasing on Go/Bun large-VA).
 - Previous tagged production audit baseline: `arm64-openjdk21-prod-20260513-r6` (post-r5 validation point covering 44/44 staged coverage, Benchmarks Game refresh, Java mixed/interpreter probes, and go-gte smoke; the current `go` branch adds Rust/Cargo, socket ABI, npm CLI package lane, `fchmodat2`, scheduler priority syscall, Docker diagnostic, C# NativeAOT SDK-availability, internal-continue/taken-internal, high-address reservation, UDP extended-error, and ARM64-only cleanup fixes).
 - Branch: `go`.
 - Remote target for this working branch: `https://github.com/rcarmo/ios-linuxkit.git`; `origin` is configured to this repository for fetch and push.
@@ -53,9 +53,13 @@ Reviewed: 2026-05-20
 
 ## Validation artifacts
 
-- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260519-214307.md`
+- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260522-020551.md`
   - Result: 83 / 83 passing
-  - Includes no-safety-valve/no-NETDIAG Rust Cargo/std coverage, Erlang helper-thread cleanup validation, UDP/TCP socket-option including UDP extended-error option coverage and `sendmsg`/`recvmsg`/`SCM_RIGHTS` ABI coverage, `fchmodat2(AT_EMPTY_PATH)`, scheduler priority syscall coverage, high-address `MAP_NORESERVE` overlap regression coverage, C# NativeAOT SDK availability, and Python/Lua/Java/Clojure/PyPy/Swift/Rust/Erlang/Zig smoke or availability coverage.
+  - Validated against the executor performance pass (adjacent-block fast path, internal-continue MAX=6).
+- Performance baseline: `/workspace/tmp/ish-arm64-perf-bench-20260521-232801.md`
+  - Pinned cpu11 (2.6 GHz A720), 21 runs, p5/p50/p95.
+  - Baseline p50: shell loop 500 = 197 ms, shell loop 2000 = 300 ms, Bun JSON = 964 ms, Python fib(30) = 4813 ms, Go build = 2703 ms.
+- Post-performance-pass: shell loop 500 = 184 ms (−6.6%), Bun JSON = 942 ms (−2.3%), shell startup = 145 ms (−2%), others within noise.
 - npm CLI package runtime coverage: `/workspace/tmp/ish-arm64-cli-package-runtime-coverage-20260515-200605.md`
   - Result: 16 / 16 passing on the Alpine npm lane.
   - Includes unauthenticated install/startup/version/help probes for fast-moving npm CLI packages; the Debian/glibc lane remains blocked by thread/libuv thread creation failures.

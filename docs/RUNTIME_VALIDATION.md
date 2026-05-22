@@ -27,6 +27,7 @@ Related docs: [workload smoke tests](ARM64_WORKLOAD_SMOKE_TESTS.md), [syscall co
 | CLI corner cases | `make test-arm64-cli-corner-smoke ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=240 INSTALL_TIMEOUT_S=1200` | Current baseline **57 pass / 2 unsupported / 0 fail**. |
 | npm CLI package lane | `make test-arm64-npm-cli-runtime-coverage ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=180 INSTALL_TIMEOUT_S=1800` | Current baseline **16 / 16**. |
 | Node/Bun timing | `make test-arm64-node-bun-perf ROOTFS_LANES=alpine=$(pwd)/alpine-arm64-fakefs REPORT_DIR=/workspace/tmp TIMEOUT_S=180` | Timing/status table for executor changes. |
+| Pinned multi-run bench | `make perf-bench PERF_RUNS=21 PERF_CPU=11 REPORT_DIR=/workspace/tmp` | p5/p50/p95 over 21 pinned runs; use for before/after executor optimization. |
 
 ## Core coverage
 
@@ -58,7 +59,8 @@ Related docs: [workload smoke tests](ARM64_WORKLOAD_SMOKE_TESTS.md), [syscall co
 |---|---|---|
 | CLI corner cases | TUI tools, DNS/HTTPS, GitHub clone, Docker CLI/daemon diagnostics, `strace`, `lsof`, netlink visibility. | **57 pass / 2 unsupported / 0 fail**. `dig` DNS now passes through real UDP; Docker daemon/container rows are unsupported without container kernel primitives. |
 | npm CLI package lane | Unauthenticated install/startup/help/version probes for npm-installed CLIs. | **16 / 16** in Alpine npm lane. Debian/glibc lane remains blocked by thread/libuv assertions. |
-| Node/Bun perf | Timing table for executor changes and optional block/prechain statistics. | Use before/after dispatch optimization work; default reports must stay free of stats output. Latest post-hot-trace-removal pair: default `/workspace/tmp/ish-arm64-node-bun-perf-20260517-162526.md` and stats `/workspace/tmp/ish-arm64-node-bun-perf-20260517-162607.md`, both **10 / 10**. |
+| Node/Bun perf | Timing table for executor changes and optional block/prechain statistics. | Use before/after dispatch optimization work. |
+| Pinned multi-run bench | p5/p50/p95 over ≥21 pinned-CPU runs; required before claiming an executor speedup. | Baseline: `/workspace/tmp/ish-arm64-perf-bench-20260521-232801.md`. Post-perf-pass (Phase 1+2): shell loop 500 −6.6%, Bun JSON −2.3%, shell startup −2%. |
 | ARM64 executor diagnostics | `ISH_ARM64_BLOCK_STATS=1` and `ISH_ARM64_FUSION_STATS=1` counters. | Opt-in only; do not run exact-output runtime coverage with these diagnostics because they intentionally write `ARM64_*_STATS` lines. Speculative hot-trace diagnostics and sidecar records were attempted but removed after showing no significant gains relative to overhead. |
 | NativeAOT publish | Full `dotnet publish -p:PublishAot=true`. | Opt-in only via `ISH_ARM64_DOTNET_AOT_PUBLISH=1`; current focused probes stall in Roslyn `csc` after restore. |
 
