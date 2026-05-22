@@ -3950,3 +3950,53 @@ stxp_c_segfault:
     mov w0, #INT_GPF
     b fiber_exit
 
+// Fused STP x29, x30, [SP, #imm]! — function prologue store pair.
+//
+// Code stream: [gadget ptr][param]
+//   param bits[15:0] = signed frame size (imm, always negative, range -512..0 in steps of 8)
+// Equivalent to: SP = SP + imm; [SP] = x29; [SP+8] = x30
+// Saves 2 gadget dispatches vs calc_addr_imm + stp64 + writeback_addr.
+.gadget fused_stp64_prologue
+    ldrsh x10, [_pc], #8               // imm (signed 16-bit); advance _pc
+    ldr x11, [_cpu, #CPU_sp]           // SP
+    add _addr, x11, x10                // addr = SP + imm
+    and _addr, _addr, #0xffffffffffff  // mask to 48-bit guest VA
+    str _addr, [_cpu, #LOCAL_value_addr] // save for SP writeback after store
+    // Load x29/x30 BEFORE write_prep: crosspage path needs them in x23/x25
+    ldr x23, [_cpu, #CPU_x0 + 29*8]   // x23 = x29
+    ldr x25, [_cpu, #CPU_x0 + 30*8]   // x25 = x30 (LR)
+    mov x24, _addr                     // x24 = guest addr for fault recovery
+    write_prep 128, fused_stp64_prologue_1
+    str x23, [_addr]                   // [addr] = x29
+    str x25, [_addr, #8]               // [addr+8] = x30
+    write_done 128, fused_stp64_prologue_1
+    // Writeback SP after successful store
+    ldr x11, [_cpu, #LOCAL_value_addr]
+    str x11, [_cpu, #CPU_sp]
+    gret
+    write_bullshit 128, fused_stp64_prologue_1
+
+// Fused LDP x29, x30, [SP], #imm — function epilogue load pair.
+//
+// Code stream: [gadget ptr][param]
+//   param bits[15:0] = signed post-index offset (always positive, range 0..504 in steps of 8)
+// Equivalent to: x29 = [SP]; x30 = [SP+8]; SP = SP + imm
+// Saves 2 gadget dispatches vs calc_addr_base + ldp64 + update_base.
+.gadget fused_ldp64_epilogue
+    ldrsh x10, [_pc], #8               // imm (signed 16-bit); advance _pc
+    ldr _addr, [_cpu, #CPU_sp]         // addr = SP (load BEFORE writeback)
+    and _addr, _addr, #0xffffffffffff
+    // Compute new SP now (before read_prep clobbers x10)
+    add x11, _addr, x10                // x11 = SP + imm = post-index SP
+    and x11, x11, #0xffffffffffff
+    str x11, [_cpu, #LOCAL_value_addr] // save new SP for writeback
+    mov x24, _addr                     // x24 = guest load addr for fault recovery
+    read_prep 128, fused_ldp64_epilogue_1
+    ldp x23, x25, [_addr]              // x23=[SP], x25=[SP+8]
+    str x23, [_cpu, #CPU_x0 + 29*8]   // x29
+    str x25, [_cpu, #CPU_x0 + 30*8]   // x30
+    ldr x11, [_cpu, #LOCAL_value_addr] // new SP (pre-computed)
+    str x11, [_cpu, #CPU_sp]           // SP writeback
+    gret
+    read_bullshit 128, fused_ldp64_epilogue_1
+
