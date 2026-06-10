@@ -1,7 +1,7 @@
 # ios-linuxkit ARM64 production baseline
 
 Date: 2026-05-10
-Reviewed: 2026-05-22
+Reviewed: 2026-06-09
 
 ## Known-good code
 
@@ -27,33 +27,33 @@ Reviewed: 2026-05-22
 ## Rootfs/package baseline
 
 - Rootfs: `alpine-arm64-fakefs`
-- Alpine release: `3.23.4`
+- Alpine release: `3.24.0`
 - Guest architecture: `aarch64`
 - OpenJDK packages:
-  - `openjdk21-jdk-21.0.10_p7-r0`
-  - `openjdk21-jre-headless-21.0.10_p7-r0`
-  - `openjdk21-jmods-21.0.10_p7-r0`
+  - `openjdk21-jdk-21.0.11`
+  - `openjdk21-jre-headless-21.0.11`
+  - `openjdk21-jmods-21.0.11`
 - Java runtime:
-  - `openjdk version "21.0.10" 2026-01-20`
-  - `OpenJDK Runtime Environment (build 21.0.10+7-alpine-r0)`
-  - `OpenJDK 64-Bit Server VM (build 21.0.10+7-alpine-r0, mixed mode, sharing)`
-- `javac`: `21.0.10`
-- Go: `go1.25.10-r0` (`go version go1.25.10 linux/arm64`)
-- Node.js: `24.14.1-r0` (`v24.14.1`)
-- Bun: `1.3.13`
-- Python: `3.12.13`
+  - `openjdk version "21.0.11" 2026-04-21`
+  - `OpenJDK Runtime Environment (build 21.0.11-alpine)`
+  - `OpenJDK 64-Bit Server VM (build 21.0.11-alpine, mixed mode, sharing)`
+- `javac`: `21.0.11`
+- Go: `go1.26.3` (`go version go1.26.3 linux/arm64`)
+- Node.js: `24.16.0` (`v24.16.0`)
+- Bun: `1.3.13` (musl binary, vendored — not in Alpine 3.24 repos)
+- Python: `3.14.5`
 - Lua: `5.4.8`
-- Clojure: `1.12.3`
-- Rust: `rustc 1.91.1` (Alpine `rust-1.91.1-r1`)
-- Erlang: `erlang27-27.3.4.9-r0`, BEAM emulator `15.2.7.6`
-- Zig: `0.15.2`
-- GCC: `15.2.0-r2`
-- Docker: `29.5.1`
+- Clojure: `1.12.3` (or latest Alpine 3.24)
+- Rust: `rustc 1.96.0` (Alpine `rust-1.96.0-r0`)
+- Erlang: `erlang27`
+- Zig: `0.16.0`
+- GCC: `15.2.0`
+- Docker: (if installed)
 - musl: `1.2.5-r23`
 
 ## Validation artifacts
 
-- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-20260522-060235.md`
+- Runtime coverage: `/workspace/tmp/ish-arm64-runtime-coverage-alpine324.md`
   - Result: **83 / 83 passing**
 - npm CLI package runtime coverage: `/workspace/tmp/ish-arm64-cli-package-runtime-coverage-20260515-200605.md`
   - Result: 16 / 16 passing on the Alpine npm lane.
