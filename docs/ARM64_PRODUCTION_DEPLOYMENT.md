@@ -22,8 +22,8 @@ This host can validate and stage the ARM64 Linux iSH production binary/rootfs ba
 - Code baseline for the deployed binary: `4c1bc37c` (`util: fix timed wait normalization`)
 - Baseline tag: `arm64-openjdk21-prod-20260510-r3`
 - Rootfs: `alpine-arm64-fakefs`
-- Alpine release: `3.23.4`
-- OpenJDK package baseline: `openjdk21-jdk-21.0.10_p7-r0`
+- Alpine release: `3.24.0`
+- OpenJDK package baseline: `openjdk21-jdk-21.0.11`
 
 Note: subsequent audit commits validated expanded language/runtime coverage, socket ABI, syscall coverage, and executor optimisations on the same rootfs. The local artifact above records the binary/rootfs staged at deployment time; regenerate if an external release wants the exact current payload. `origin` is configured for `rcarmo/ios-linuxkit`.
 
@@ -42,10 +42,10 @@ Result log: `/workspace/tmp/ish-arm64-production-deploy-20260512/postdeploy-java
 Observed result:
 
 ```text
-openjdk version "21.0.10" 2026-01-20
-OpenJDK Runtime Environment (build 21.0.10+7-alpine-r0)
-OpenJDK 64-Bit Server VM (build 21.0.10+7-alpine-r0, mixed mode, sharing)
-javac 21.0.10
+openjdk version "21.0.11" 2026-04-21
+OpenJDK Runtime Environment (build 21.0.11-alpine)
+OpenJDK 64-Bit Server VM (build 21.0.11-alpine, mixed mode, sharing)
+javac 21.0.11
 javac_rc:0
 postdeploy-hi
 java_rc:0

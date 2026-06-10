@@ -186,7 +186,7 @@ fakefs_bind_mount("/host/path/to/data", "/mnt/data", /*read_only=*/true);
 
 ### 5. Rootfs 管理
 
-- **Alpine 3.23.4 aarch64**，自带完整 apk 包管理器
+- **Alpine 3.24 aarch64**，自带完整 apk 包管理器
 - **RootfsPatch.bundle**: 增量 rootfs 更新的版本化 overlay 系统
 - **Polyfills**: undici/llhttp 的 WebAssembly polyfill、HTTP 下载的 fetch polyfill
 - **OPENSSL_armcap=0** 和 **GODEBUG/GOMAXPROCS** 在 `sys_execve` 中注入

@@ -16,7 +16,7 @@ Install and run `https://github.com/rcarmo/go-gte` inside the ios-linuxkit ARM64
 - Emulator: `build-arm64-linux/ish`
 - Rootfs: `alpine-arm64-fakefs`
 - Guest kernel banner: `Linux orangepi6plus 4.20.69-ish ... aarch64`
-- Guest Go: `go version go1.25.9 linux/arm64`
+- Guest Go: `go version go1.26.3 linux/arm64`
 - go-gte commits tested:
   - initial: `b76c36a`
   - latest patched: `d908cdb` (`Fix ARM64 SgemmNT: complete F0→F20 rename in scalar tail + store`)

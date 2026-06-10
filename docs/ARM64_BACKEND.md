@@ -195,7 +195,7 @@ Lets host-app code share files with the Linux guest without copying.
 
 ### 5. Rootfs Management
 
-- **Alpine 3.23.4 aarch64** with full apk package manager
+- **Alpine 3.24 aarch64** with full apk package manager
 - **RootfsPatch.bundle**: Versioned overlay system for incremental rootfs updates
 - **Polyfills**: WebAssembly polyfill for undici/llhttp, fetch polyfill for HTTP downloads
 - **OPENSSL_armcap=0** and **GODEBUG/GOMAXPROCS** injection in `sys_execve`
@@ -309,7 +309,7 @@ Current Linux-host status from this pass:
 - Latest staged Alpine run: **83 / 83 passing** (`/workspace/tmp/ish-arm64-runtime-coverage-20260519-205257.md`, `TIMEOUT_S=120`, `INSTALL_TIMEOUT_S=1200`).
 - Latest CLI corner-case smoke baseline: **57 pass / 2 unsupported / 0 fail**; `dig` now completes real UDP DNS through the BIND/libuv `IP_RECVERR`/`IPV6_RECVERR` path, leaving only Docker daemon/container rows unsupported.
 - Latest Alpine npm CLI package run: **16 / 16 passing** (`/workspace/tmp/ish-arm64-cli-package-runtime-coverage-20260515-200605.md`, unauthenticated install/startup/version/help probes).
-- Production package baseline: [ARM64_PRODUCTION_BASELINE.md](ARM64_PRODUCTION_BASELINE.md) (`alpine-arm64-fakefs` on Alpine 3.23.4 with OpenJDK 21.0.10_p7-r0, Go 1.25.10, Docker 29.5.1; current `go` branch after the ARM64-only cleanup; `origin` is configured for `rcarmo/ios-linuxkit`).
+- Production package baseline: [ARM64_PRODUCTION_BASELINE.md](ARM64_PRODUCTION_BASELINE.md) (`alpine-arm64-fakefs` on Alpine 3.24.0 with Go 1.26.3, Python 3.14.5, Rust 1.96.0, Node 24.16.0; `origin` is configured for `rcarmo/ios-linuxkit`).
 - Non-trivial workload probes are grouped in [ARM64_WORKLOAD_SMOKE_TESTS.md](ARM64_WORKLOAD_SMOKE_TESTS.md): Bun workspace/server, `rcarmo/go-gte`, the Benchmarks Game rows, and Node/Bun executor timing/diagnostic gates.
 - C coverage is green: `gcc --version`, compile, and execute all pass.
 - SysV IPC coverage is green: shared memory and message queues work across `fork()`.
@@ -333,7 +333,7 @@ Current Linux-host status from this pass:
   `lua5.4 -v`, and Lua eval all pass.
 - Java and Clojure smoke coverage is green: default mixed-mode `javac`/`java`,
   Java interpreter fallback, and `clojure.main` eval all pass.
-- PyPy and Swift availability probes are green by recording that Alpine 3.23
+- PyPy and Swift availability probes are green by recording that Alpine 3.24
   aarch64 currently has no packaged PyPy or Swift toolchain in the index.
 - C# NativeAOT SDK availability is accounted for: `dotnet9-sdk-aot` and
   `dotnet10-sdk-aot` are installed and the default gate reports
@@ -344,7 +344,7 @@ Current Linux-host status from this pass:
   `erl -noshell`/`erlc` module execution remains follow-up work.
 - Zig coverage is green for compiler/object paths: version, `zig build-obj`, and
   linked object execution through a C harness pass. `zig test` is kept out of the
-  gate because Alpine Zig 0.15.2 fails compiler-rt `f16` comptime compilation
+  gate because Alpine Zig 0.16.0 fails compiler-rt `f16` comptime compilation
   before guest code runs; this is tracked separately from emulator execution.
 - Fixed lazy `MAP_NORESERVE` reservation permissions: `mprotect()` now updates
   reservation metadata, so later demand faults materialize pages with the new

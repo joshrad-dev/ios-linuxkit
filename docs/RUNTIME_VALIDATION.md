@@ -75,4 +75,4 @@ When fixing a runtime bug, add or update a focused row in the relevant harness s
 
 ## Go compiler note
 
-Alpine 3.23's `go` package provides standard-library source but no precompiled `/usr/lib/go/pkg/linux_arm64` archives, so cold-cache `go run` can exceed the standard timeout. Use `TIMEOUT_S=600` when running full coverage on a cold Go cache. ARM64 incoming eager prechain is enabled by default; `ISH_ARM64_EAGER_PRECHAIN_INCOMING=0` is available as a diagnostic opt-out.
+Alpine 3.24's `go` package provides standard-library source but no precompiled `/usr/lib/go/pkg/linux_arm64` archives, so cold-cache `go run` can exceed the standard timeout. Use `TIMEOUT_S=600` when running full coverage on a cold Go cache. ARM64 incoming eager prechain is enabled by default; `ISH_ARM64_EAGER_PRECHAIN_INCOMING=0` is available as a diagnostic opt-out.

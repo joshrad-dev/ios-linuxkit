@@ -27,7 +27,7 @@
 > - **Host integration** — `ISHShellExecutor` (Obj-C shell API), `DebugServer` (JSON-RPC over HTTP),
 >   `Native Offload` (bypass emulation for selected binaries), bind mounts for host↔guest file sharing
 > - **Runtime coverage harness** — Linux-host `make test-arm64-runtime-coverage` gate for shell/C/Go/Bun/Node/npm bring-up
-> - **iOS-first rootfs** — Alpine 3.23.4 aarch64 with full `apk` ecosystem and versioned overlay patching
+> - **iOS-first rootfs** — Alpine 3.24 aarch64 with full `apk` ecosystem and versioned overlay patching
 >
 > **Historical pre-cleanup performance (ARM64 vs x86, compute-heavy):** C `int_arith_2M` **12x faster**,
 > Python `fib(30)` **9.2x faster**, `sum(1M)` **10.2x faster**, shell `seq+awk 100K` **7.2x faster**.
