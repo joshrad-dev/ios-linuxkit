@@ -110,6 +110,7 @@
         },
         cursorBlink: styleState.blinkCursor,
         cursorStyle: cursorStyleForXterm(styleState.cursorShape),
+        cursorInactiveStyle: cursorStyleForXterm(styleState.cursorShape),
         allowTransparency: true,
         scrollback: 10000,
         convertEol: false,
@@ -205,6 +206,7 @@
                 term.options.fontFamily = styleState.fontFamily;
             term.options.cursorBlink = !!styleState.blinkCursor;
             term.options.cursorStyle = cursorStyleForXterm(styleState.cursorShape);
+            term.options.cursorInactiveStyle = cursorStyleForXterm(styleState.cursorShape);
             term.options.theme = themeForXterm(styleState);
 
             fitTerminal();
