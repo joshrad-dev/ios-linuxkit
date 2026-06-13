@@ -93,7 +93,7 @@
     let lastNativeScrollHeight;
     let lastNativeScrollTop;
     let oldProps = {};
-    let xtermFocused = null;
+    let xtermAppActive = null;
     const resizeSettleDelayMs = 120;
 
     // ── Terminal setup ────────────────────────────────────────────────────────
@@ -110,7 +110,6 @@
         },
         cursorBlink: styleState.blinkCursor,
         cursorStyle: cursorStyleForXterm(styleState.cursorShape),
-        cursorInactiveStyle: cursorStyleForXterm(styleState.cursorShape),
         allowTransparency: true,
         scrollback: 10000,
         convertEol: false,
@@ -138,6 +137,7 @@
     term.onCursorMove(syncApplicationCursor);
 
     term.open(terminalElement);
+    installNativeFocusAdapter();
     installLigatures();
     disableWebTextInput();
     installFocusBridge();
@@ -182,7 +182,7 @@
         },
         setFocused(focused) {
             terminalElement.classList.toggle('terminal-focused', !!focused);
-            setXtermFocused(!!focused);
+            setXtermAppActive(!!focused);
         },
         scrollToBottom() {
             term.scrollToBottom();
@@ -206,7 +206,6 @@
                 term.options.fontFamily = styleState.fontFamily;
             term.options.cursorBlink = !!styleState.blinkCursor;
             term.options.cursorStyle = cursorStyleForXterm(styleState.cursorShape);
-            term.options.cursorInactiveStyle = cursorStyleForXterm(styleState.cursorShape);
             term.options.theme = themeForXterm(styleState);
 
             fitTerminal();
@@ -227,7 +226,7 @@
     };
 
     // ── Signal ready ─────────────────────────────────────────────────────────
-    setXtermFocused(true);
+    setXtermAppActive(true);
     fitTerminal();
     native.load();
     native.syncFocus();
@@ -272,25 +271,37 @@
         }
     }
 
-    function setXtermFocused(focused) {
-        if (xtermFocused === focused) {
-            if (focused)
+    function installNativeFocusAdapter() {
+        const browserService = term._core?._coreBrowserService;
+        if (!browserService)
+            return;
+        try {
+            Object.defineProperty(browserService, 'isFocused', {
+                configurable: true,
+                get: () => !!xtermAppActive,
+            });
+        } catch (error) {
+            native.log(`terminal focus adapter failed: ${error?.stack || error}`);
+        }
+    }
+
+    function setXtermAppActive(active) {
+        if (xtermAppActive === active) {
+            if (active)
                 ensureCursorVisible();
             return;
         }
-        xtermFocused = focused;
+        xtermAppActive = active;
 
         const core = term._core;
         try {
-            if (core?._coreBrowserService) {
-                core._coreBrowserService._isFocused = focused;
-                core._coreBrowserService._cachedIsFocused = undefined;
-            }
-            if (focused) {
-                core?._handleTextAreaFocus?.();
+            if (core?.element)
+                core.element.classList.toggle('focus', active);
+            if (active) {
+                core?._renderService?.handleFocus?.();
                 ensureCursorVisible();
             } else {
-                core?._handleTextAreaBlur?.();
+                core?._renderService?.handleBlur?.();
             }
         } catch (error) {
             native.log(`terminal focus sync failed: ${error?.stack || error}`);

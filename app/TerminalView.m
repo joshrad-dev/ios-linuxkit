@@ -82,9 +82,20 @@ struct rowcol {
 
     self.markedRange = [UITextRange new];
     self.selectedRange = [UITextRange new];
+
+    NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
+    [center addObserver:self
+               selector:@selector(applicationDidBecomeActive:)
+                   name:UIApplicationDidBecomeActiveNotification
+                 object:UIApplication.sharedApplication];
+    [center addObserver:self
+               selector:@selector(applicationWillResignActive:)
+                   name:UIApplicationWillResignActiveNotification
+                 object:UIApplication.sharedApplication];
 }
 
 - (void)dealloc {
+    [NSNotificationCenter.defaultCenter removeObserver:self];
     self.terminal = nil;
 }
 
@@ -209,6 +220,18 @@ static NSString *const HANDLERS[] = {@"syncFocus", @"focus", @"newScrollHeight",
 
 #pragma mark Focus and scrolling
 
+- (BOOL)terminalShouldRenderFocused {
+    if (self.window == nil)
+        return NO;
+    if (@available(iOS 13.0, *))
+        return self.window.windowScene.activationState == UISceneActivationStateForegroundActive;
+    return UIApplication.sharedApplication.applicationState == UIApplicationStateActive;
+}
+
+- (void)syncTerminalRenderFocus {
+    self.terminalFocused = self.terminalShouldRenderFocused;
+}
+
 - (void)setTerminalFocused:(BOOL)terminalFocused {
     _terminalFocused = terminalFocused;
     NSString *script = terminalFocused ? @"exports.setFocused(true)" : @"exports.setFocused(false)";
@@ -216,18 +239,24 @@ static NSString *const HANDLERS[] = {@"syncFocus", @"focus", @"newScrollHeight",
 }
 
 - (BOOL)becomeFirstResponder {
-    self.terminalFocused = YES;
+    [self syncTerminalRenderFocus];
     [self reloadInputViews];
     return [super becomeFirstResponder];
 }
 - (BOOL)resignFirstResponder {
-    self.terminalFocused = NO;
+    [self syncTerminalRenderFocus];
     return [super resignFirstResponder];
 }
 - (void)windowDidBecomeKey:(NSNotification *)notif {
-    self.terminalFocused = YES;
+    [self syncTerminalRenderFocus];
 }
 - (void)windowDidResignKey:(NSNotification *)notif {
+    [self syncTerminalRenderFocus];
+}
+- (void)applicationDidBecomeActive:(NSNotification *)notif {
+    [self syncTerminalRenderFocus];
+}
+- (void)applicationWillResignActive:(NSNotification *)notif {
     self.terminalFocused = NO;
 }
 
@@ -259,7 +288,7 @@ static NSString *const HANDLERS[] = {@"syncFocus", @"focus", @"newScrollHeight",
 
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
     if ([message.name isEqualToString:@"syncFocus"]) {
-        self.terminalFocused = self.terminalFocused;
+        [self syncTerminalRenderFocus];
     } else if ([message.name isEqualToString:@"focus"]) {
         if (!self.isFirstResponder) {
             [self becomeFirstResponder];
