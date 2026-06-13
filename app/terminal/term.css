@@ -78,3 +78,18 @@ body {
     -webkit-user-select: none;
     user-select: none;
 }
+
+#terminal .xterm {
+    width: 100%;
+    height: 100%;
+}
+
+#terminal .xterm .xterm-viewport {
+    overflow: hidden;
+}
+
+#terminal .xterm .xterm-viewport::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
