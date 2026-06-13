@@ -29,7 +29,7 @@
     const terminalElement = document.getElementById('terminal');
     const { Terminal, FitAddon, WebLinksAddon, LigaturesAddon } = window.xtermModules || {};
     const { CanvasAddon } = window.CanvasAddon || {};
-    if (!Terminal || !FitAddon || !WebLinksAddon || !LigaturesAddon) {
+    if (!Terminal || !FitAddon || !WebLinksAddon) {
         window.__terminalBootstrapLog?.('terminal xterm modules were not loaded');
         return;
     }
@@ -137,7 +137,6 @@
     term.onCursorMove(syncApplicationCursor);
 
     term.open(terminalElement);
-    term.loadAddon(new LigaturesAddon());
     disableWebTextInput();
     installFocusBridge();
     fitAddon.fit();
@@ -227,6 +226,7 @@
     fitTerminal();
     native.load();
     native.syncFocus();
+    installOptionalLigatures();
 
     function disableWebTextInput() {
         if (!term.textarea)
@@ -259,6 +259,16 @@
         }, {capture: true});
         terminalElement.addEventListener('focus', () => native.syncFocus());
         terminalElement.addEventListener('blur', () => native.syncFocus());
+    }
+
+    function installOptionalLigatures() {
+        if (!LigaturesAddon)
+            return;
+        try {
+            term.loadAddon(new LigaturesAddon());
+        } catch (error) {
+            native.log(`terminal ligatures addon failed: ${error?.stack || error}`);
+        }
     }
 
     function scheduleScrollSync() {

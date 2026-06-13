@@ -29,6 +29,8 @@ Build switch:
 
 Runtime notes:
 - xterm-classic.js is generated from xterm.mjs, addon-fit.mjs,
-  addon-web-links.mjs, and addon-ligatures.mjs with ESM exports rewritten to
-  window.xtermModules. This matches the older iOS xterm integration's classic
-  bundle shape and avoids WKWebView local module loading failures.
+  addon-web-links.mjs, and addon-ligatures.mjs. Each source file is wrapped in
+  its own IIFE, and ESM exports are rewritten to window.xtermModules. This
+  matches the older iOS xterm integration's classic bundle shape, avoids
+  top-level minifier variable collisions, and avoids WKWebView local module
+  loading failures.
