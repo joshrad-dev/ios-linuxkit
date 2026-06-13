@@ -9,7 +9,7 @@
  * the xterm.js renderer instead of Ghostty WebGL/Canvas2D.
  */
 
-(() => {
+(async () => {
     'use strict';
 
     window.exports = {
@@ -29,7 +29,7 @@
     const terminalElement = document.getElementById('terminal');
     const { Terminal, FitAddon, WebLinksAddon, LigaturesAddon } = window.xtermModules || {};
     const { CanvasAddon } = window.CanvasAddon || {};
-    if (!Terminal || !FitAddon || !WebLinksAddon) {
+    if (!Terminal || !FitAddon || !WebLinksAddon || !LigaturesAddon) {
         window.__terminalBootstrapLog?.('terminal xterm modules were not loaded');
         return;
     }
@@ -56,8 +56,6 @@
         'brightCyan',
         'brightWhite',
     ];
-
-    capDevicePixelRatioForIPhone();
 
     // ── Native bridge (same as term.js) ──────────────────────────────────────
     const native = new Proxy({}, {
@@ -88,12 +86,14 @@
     };
     styleState = {...styleState, ...normalizeStyleUpdate(window.__terminalInitialStyle)};
     applyDocumentStyle(styleState);
+    await loadConfiguredFont(styleState);
 
     let resizeTimeout = null;
     let pendingScrollSync = false;
     let lastNativeScrollHeight;
     let lastNativeScrollTop;
     let oldProps = {};
+    let xtermFocused = null;
     const resizeSettleDelayMs = 120;
 
     // ── Terminal setup ────────────────────────────────────────────────────────
@@ -137,6 +137,7 @@
     term.onCursorMove(syncApplicationCursor);
 
     term.open(terminalElement);
+    installLigatures();
     disableWebTextInput();
     installFocusBridge();
     fitAddon.fit();
@@ -180,6 +181,7 @@
         },
         setFocused(focused) {
             terminalElement.classList.toggle('terminal-focused', !!focused);
+            setXtermFocused(!!focused);
         },
         scrollToBottom() {
             term.scrollToBottom();
@@ -223,10 +225,10 @@
     };
 
     // ── Signal ready ─────────────────────────────────────────────────────────
+    setXtermFocused(true);
     fitTerminal();
     native.load();
     native.syncFocus();
-    installOptionalLigatures();
 
     function disableWebTextInput() {
         if (!term.textarea)
@@ -237,7 +239,6 @@
         term.textarea.autocomplete = 'off';
         term.textarea.autocorrect = 'off';
         term.textarea.spellcheck = false;
-        term.textarea.blur();
     }
 
     function installFocusBridge() {
@@ -261,14 +262,44 @@
         terminalElement.addEventListener('blur', () => native.syncFocus());
     }
 
-    function installOptionalLigatures() {
-        if (!LigaturesAddon)
-            return;
+    function installLigatures() {
         try {
             term.loadAddon(new LigaturesAddon());
         } catch (error) {
             native.log(`terminal ligatures addon failed: ${error?.stack || error}`);
         }
+    }
+
+    function setXtermFocused(focused) {
+        if (xtermFocused === focused) {
+            if (focused)
+                ensureCursorVisible();
+            return;
+        }
+        xtermFocused = focused;
+
+        const core = term._core;
+        try {
+            if (core?._coreBrowserService) {
+                core._coreBrowserService._isFocused = focused;
+                core._coreBrowserService._cachedIsFocused = undefined;
+            }
+            if (focused) {
+                core?._handleTextAreaFocus?.();
+                ensureCursorVisible();
+            } else {
+                core?._handleTextAreaBlur?.();
+            }
+        } catch (error) {
+            native.log(`terminal focus sync failed: ${error?.stack || error}`);
+        }
+    }
+
+    function ensureCursorVisible() {
+        const coreService = term._core?.coreService;
+        if (coreService)
+            coreService.isCursorInitialized = true;
+        term.refresh(term.buffer.active.cursorY, term.buffer.active.cursorY);
     }
 
     function scheduleScrollSync() {
@@ -334,22 +365,37 @@
     async function loadConfiguredFont(style) {
         if (!document.fonts?.load)
             return;
+        const family = firstFontFamily(style.fontFamily);
+        if (!family)
+            return;
         try {
-            await document.fonts.load(`${style.fontSize}px ${quoteFontFamily(style.fontFamily)}`);
+            await Promise.all([
+                document.fonts.load(`${style.fontSize}px ${quoteCssFontFamily(family)}`),
+                document.fonts.load(`700 ${style.fontSize}px ${quoteCssFontFamily(family)}`),
+            ]);
+            await document.fonts.ready;
         } catch (error) {
             native.log(`terminal font load failed: ${error}`);
         }
     }
 
-    function quoteFontFamily(family) {
-        return family.split(',')
-            .map((part) => {
-                const trimmed = part.trim();
-                if (!trimmed.includes(' ') || trimmed.startsWith('"') || trimmed.startsWith("'"))
-                    return trimmed;
-                return `"${trimmed}"`;
-            })
-            .join(', ');
+    function firstFontFamily(familyList) {
+        const trimmed = String(familyList || '').trim();
+        if (!trimmed)
+            return '';
+        const match = trimmed.match(/^(['"])(.*?)\1/);
+        if (match)
+            return match[2];
+        return trimmed.split(',')[0].trim();
+    }
+
+    function quoteCssFontFamily(family) {
+        const trimmed = String(family || '').trim();
+        if (!trimmed || trimmed.startsWith('"') || trimmed.startsWith("'"))
+            return trimmed;
+        if (/^[a-zA-Z_-][a-zA-Z0-9_-]*$/.test(trimmed))
+            return trimmed;
+        return `"${trimmed.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
     }
 
     function cursorStyleForXterm(cursorShape) {
@@ -383,16 +429,4 @@
         return theme;
     }
 
-    function capDevicePixelRatioForIPhone() {
-        if (!/\biPhone\b/.test(navigator.userAgent || '') && navigator.platform !== 'iPhone')
-            return;
-        try {
-            Object.defineProperty(window, 'devicePixelRatio', {
-                configurable: true,
-                get: () => 1,
-            });
-        } catch (error) {
-            window.__terminalBootstrapLog?.(`terminal devicePixelRatio cap failed: ${error}`);
-        }
-    }
 })();
