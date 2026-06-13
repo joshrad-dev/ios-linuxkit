@@ -1,6 +1,6 @@
 ISH_KERNEL = linux
 GUEST_ARCH = arm64
-ROOTFS_URL = dl-cdn.alpinelinux.org/alpine/v3.21/releases/aarch64/alpine-minirootfs-3.21.0-aarch64.tar.gz
+ROOTFS_URL = dl-cdn.alpinelinux.org/alpine/v3.24/releases/aarch64/alpine-minirootfs-3.24.0-aarch64.tar.gz
 ROOTFS_ARCH = aarch64
 NINJA_TARGETS = deps/liblinux.a libfakefs.a libish_emu.a
 LINUX_HOSTCC = env -u SDKROOT -u IPHONEOS_DEPLOYMENT_TARGET xcrun clang

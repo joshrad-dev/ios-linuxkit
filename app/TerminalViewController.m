@@ -160,6 +160,11 @@
 
 - (int)startSession {
     NSArray<NSString *> *command = UserPreferences.shared.launchCommand;
+    if (command.count == 0) {
+        NSLog(@"terminal session launch command is empty");
+        return _EINVAL;
+    }
+    NSLog(@"starting terminal session with command: %@", [command componentsJoinedByString:@" "]);
 
 #if !ISH_LINUX
     int err = become_new_init_child();
@@ -186,6 +191,7 @@
     if (err < 0)
         return err;
     self.sessionPid = current->pid;
+    NSLog(@"started terminal session pid %d on %@", self.sessionPid, stdioFile);
     task_start(current);
 #else
     const char *argv_arr[command.count + 1];
@@ -215,6 +221,7 @@
         return err;
     self.sessionTerminal = terminal;
     self.sessionPid = sessionPid;
+    NSLog(@"started terminal session pid %d", self.sessionPid);
 #endif
     return 0;
 }
@@ -225,19 +232,10 @@
     if (pid != self.sessionPid)
         return;
 
+    int code = [notif.userInfo[@"code"] intValue];
+    NSLog(@"terminal session pid %d exited with code %d", pid, code);
     [self.sessionTerminal destroy];
-    // On iOS 13, there are multiple windows, so just close this one.
-    if (@available(iOS 13, *)) {
-        // On iPhone, destroying scenes will fail, but the error doesn't actually go to the error handler, which is really stupid. Apple doesn't fix bugs, so I'm forced to just add a check here.
-        if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && self.sceneSession != nil) {
-            [UIApplication.sharedApplication requestSceneSessionDestruction:self.sceneSession options:nil errorHandler:^(NSError *error) {
-                NSLog(@"scene destruction error %@", error);
-                self.sceneSession = nil;
-                [self processExited:notif];
-            }];
-            return;
-        }
-    }
+    self.sessionTerminal = nil;
     current = NULL; // it's been freed
     [self startNewSession];
 }

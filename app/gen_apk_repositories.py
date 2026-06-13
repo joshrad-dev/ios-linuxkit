@@ -6,8 +6,8 @@ def trim(x, start, end):
     return x[len(start):-len(end)]
 
 APK_REPOSITORIES = [
-    ('v3.21', 'main'),
-    ('v3.21', 'community'),
+    ('v3.24', 'main'),
+    ('v3.24', 'community'),
 ]
 GUEST_ARCH = os.environ.get('GUEST_ARCH', 'arm64')
 

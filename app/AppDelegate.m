@@ -55,6 +55,7 @@ static void ios_handle_exit(struct task *task, int code) {
         return;
     // pid should be saved now since task would be freed
     pid_t pid = task->pid;
+    NSLog(@"guest process pid %d exited with code %d", pid, code);
     dispatch_async(dispatch_get_main_queue(), ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:ProcessExitedNotification
                                                             object:nil
@@ -165,6 +166,11 @@ static int bootError;
 
     NSArray<NSString *> *command;
     command = UserPreferences.shared.bootCommand;
+    if (command.count == 0) {
+        NSLog(@"boot command is empty");
+        return _EINVAL;
+    }
+    NSLog(@"booting guest init with command: %@", [command componentsJoinedByString:@" "]);
     char argv[4096];
     [Terminal convertCommand:command toArgs:argv limitSize:sizeof(argv)];
     const char *envp =

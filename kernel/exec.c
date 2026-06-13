@@ -89,6 +89,7 @@ static int load_entry(exec_prg_header ph, addr_t bias, struct fd *fd) {
 
     int flags = P_READ;
     if (ph.flags & PH_W) flags |= P_WRITE;
+    if (ph.flags & PH_X) flags |= P_EXEC;
 
     if ((err = fd->ops->mmap(fd, current->mem, PAGE(addr),
                     PAGE_ROUND_UP(filesize + PGOFFSET(addr)),
@@ -296,7 +297,7 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
     // STACK TIME!
 
     // ARM64: stack near top of 48-bit address space
-    if ((err = pt_map_nothing(current->mem, STACK_INIT_PAGE, 1, P_WRITE | P_GROWSDOWN)) < 0)
+    if ((err = pt_map_nothing(current->mem, STACK_INIT_PAGE, 1, P_READ | P_WRITE | P_GROWSDOWN)) < 0)
         goto beyond_hope;
     if ((err = pt_map_nothing(current->mem, STACK_TOP_PAGE, 1, P_READ)) < 0)
         goto beyond_hope;
@@ -338,7 +339,9 @@ static int elf_exec(struct fd *fd, const char *file, struct exec_args argv, stru
 
     // declare elf aux now so we can know how big it is
     struct aux_ent aux[] = {
-        {AX_SYSINFO_EHDR, current->mm->vdso},
+        // The internal VDSO supplies sigreturn trampolines, but it is not a
+        // complete aarch64 Linux VDSO for userspace dynamic loaders to parse.
+        {AX_SYSINFO_EHDR, 0},
         {AX_HWCAP, 0x003}, // FP|ASIMD only. Keep optional crypto/LSE features hidden until helper coverage is clean.
         {AX_PAGESZ, PAGE_SIZE},
         {AX_CLKTCK, 0x64},

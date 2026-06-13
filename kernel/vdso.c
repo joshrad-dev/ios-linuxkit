@@ -54,9 +54,5 @@ int vdso_symbol(const char *name) {
     return 0; // symbol not found
 
 fail:
-    // It shouldn't be possible to actually end up with an invalid vsdo compiled in
-    fflush(stdout);
-    fprintf(stderr, "invalid vdso. this should never happen.\n");
-    fflush(stderr);
-    abort();
+    return 0;
 }

@@ -161,6 +161,8 @@ noreturn void do_exit(int status) {
 
         if (parent == NULL) {
             // init died
+            if (exit_hook != NULL)
+                exit_hook(current, status);
             halt_system();
         } else {
             leader->zombie = true;
@@ -177,7 +179,7 @@ noreturn void do_exit(int status) {
                 send_signal(parent, leader->exit_signal, info);
         }
 
-        if (exit_hook != NULL)
+        if (parent != NULL && exit_hook != NULL)
             exit_hook(current, status);
     skip_zombie_notify: ;
     }

@@ -202,7 +202,11 @@ int send_group_signal(dword_t pgid, int sig, struct siginfo_ info) {
 static addr_t sigreturn_trampoline(const char *name) {
     addr_t sigreturn_addr = vdso_symbol(name);
     if (sigreturn_addr == 0) {
+#if defined(GUEST_ARM64)
+        return 0;
+#else
         die("sigreturn not found in vdso, this should never happen");
+#endif
     }
     return current->mm->vdso + sigreturn_addr;
 }
@@ -377,6 +381,15 @@ static void setup_sigframe(struct siginfo_ *info, struct sigframe_ *frame) {
 
 static void setup_rt_sigframe(struct siginfo_ *info, struct rt_sigframe_ *frame) {
     frame->restorer = sigreturn_trampoline("__kernel_rt_sigreturn");
+#if defined(GUEST_ARM64)
+    if (frame->restorer == 0) {
+        static const uint32_t rt_retcode[] = {
+            0xd2801168, // mov x8, #139
+            0xd4000001, // svc #0
+        };
+        memcpy(frame->retcode, rt_retcode, sizeof(rt_retcode));
+    }
+#endif
     frame->sig = info->sig;
     frame->info = *info;
     frame->uc.flags = 0;
@@ -385,6 +398,7 @@ static void setup_rt_sigframe(struct siginfo_ *info, struct rt_sigframe_ *frame)
     setup_sigcontext(&frame->uc.mcontext, &current->cpu);
     frame->uc.sigmask = current->blocked;
 
+#if !defined(GUEST_ARM64)
     static const struct {
         uint8_t mov;
         uint32_t nr_rt_sigreturn;
@@ -396,6 +410,7 @@ static void setup_rt_sigframe(struct siginfo_ *info, struct rt_sigframe_ *frame)
         .int80 = 0x80cd,
     };
     memcpy(frame->retcode, &rt_retcode, sizeof(rt_retcode));
+#endif
 }
 
 static void receive_signal(struct sighand *sighand, struct siginfo_ *info) {
@@ -548,10 +563,13 @@ static void receive_signal(struct sighand *sighand, struct siginfo_ *info) {
 
 #if defined(GUEST_ARM64)
     // Set LR to the signal return trampoline.
-    if (need_siginfo)
-        current->cpu.regs[30] = frame.rt_sigframe.restorer;
-    else
+    if (need_siginfo) {
+        current->cpu.regs[30] = frame.rt_sigframe.restorer != 0
+            ? frame.rt_sigframe.restorer
+            : sp + offsetof(struct rt_sigframe_, retcode);
+    } else {
         current->cpu.regs[30] = frame.sigframe.restorer;
+    }
 #endif
 
     if (action->flags & SA_RESETHAND_)
