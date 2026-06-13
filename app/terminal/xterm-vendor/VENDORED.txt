@@ -24,5 +24,11 @@ All MIT licensed by the xterm.js authors.
 
 Build switch:
 - Default (Ghostty): loads term.html → ghostty-web.js + term.js
-- Xterm.js: include XtermRenderer.xcconfig → loads xterm-term.html → xterm-vendor/ + xterm-term-bridge.js
+- Xterm.js: include XtermRenderer.xcconfig → loads xterm-term.html → xterm-vendor/xterm-classic.js + xterm-term-bridge.js
 - Both renderers use the same native bridge API (window.exports / webkit.messageHandlers)
+
+Runtime notes:
+- xterm-classic.js is generated from xterm.mjs, addon-fit.mjs,
+  addon-web-links.mjs, and addon-ligatures.mjs with ESM exports rewritten to
+  window.xtermModules. This matches the older iOS xterm integration's classic
+  bundle shape and avoids WKWebView local module loading failures.

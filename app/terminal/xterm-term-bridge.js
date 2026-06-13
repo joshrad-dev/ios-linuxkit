@@ -12,13 +12,31 @@
 (() => {
     'use strict';
 
+    window.exports = {
+        write() {},
+        getSize: () => [0, 0],
+        copy: () => false,
+        setFocused() {},
+        scrollToBottom() {},
+        newScrollTop() {},
+        updateStyle() {},
+        getCharacterSize: () => [0, 0],
+        clearScrollback() {},
+        setUserGesture() {},
+        setAccessibilityEnabled() {},
+    };
+
     const terminalElement = document.getElementById('terminal');
     const { Terminal, FitAddon, WebLinksAddon, LigaturesAddon } = window.xtermModules || {};
     const { CanvasAddon } = window.CanvasAddon || {};
-    if (!Terminal || !FitAddon || !WebLinksAddon || !LigaturesAddon)
-        throw new Error('xterm modules were not loaded');
-    if (!CanvasAddon)
-        throw new Error('xterm canvas addon was not loaded');
+    if (!Terminal || !FitAddon || !WebLinksAddon || !LigaturesAddon) {
+        window.__terminalBootstrapLog?.('terminal xterm modules were not loaded');
+        return;
+    }
+    if (!CanvasAddon) {
+        window.__terminalBootstrapLog?.('terminal xterm canvas addon was not loaded');
+        return;
+    }
 
     const ansiColorNames = [
         'black',
@@ -96,7 +114,8 @@
         scrollback: 10000,
         convertEol: false,
         disableStdin: true,  // iOS handles text input natively
-        overviewRulerWidth: 0,
+        allowProposedApi: true,
+        overviewRuler: {width: 0},
         smoothScrollDuration: 0,
         windowsMode: false,
     });
